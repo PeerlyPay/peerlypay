@@ -1,0 +1,283 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Minus, Plus, Loader2 } from 'lucide-react';
+import { useStore } from '@/lib/store';
+import type { Currency, PaymentMethod, CreateOrderInput } from '@/types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+export interface FormData {
+  amount: number;
+  currency: Currency;
+  rate: number;
+  paymentMethod: PaymentMethod;
+  duration: string;
+}
+
+const CURRENCIES: Currency[] = ['ARS', 'USD'];
+const PAYMENT_METHODS: PaymentMethod[] = ['Bank Transfer', 'MercadoPago'];
+const DURATIONS = ['1 day', '3 days', '7 days'];
+
+interface CreateOrderFormProps {
+  orderType: 'buy' | 'sell';
+}
+
+const initialFormData: FormData = {
+  amount: 0,
+  currency: 'USD',
+  rate: 0,
+  paymentMethod: 'Bank Transfer',
+  duration: '1 day',
+};
+
+function NumberField({
+  value,
+  onChange,
+  min = 0,
+  step = 1,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  step?: number;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onChange(Math.max(min, value - step))}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-all duration-200"
+        aria-label="Decrease"
+      >
+        <Minus className="size-4" />
+      </button>
+      <Input
+        type="number"
+        min={min}
+        step={step}
+        value={value || ''}
+        onChange={(e) => {
+          const v = e.target.value === '' ? min : parseFloat(e.target.value);
+          onChange(isNaN(v) ? min : Math.max(min, v));
+        }}
+        className="flex-1 rounded-xl border border-gray-200 bg-gray-50 text-center text-body"
+      />
+      <button
+        type="button"
+        onClick={() => onChange(value + step)}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 transition-all duration-200"
+        aria-label="Increase"
+      >
+        <Plus className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
+  console.log('CreateOrderForm rendered with orderType:', orderType);
+
+  const router = useRouter();
+  const { createOrder } = useStore();
+  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const update = <K extends keyof FormData>(key: K, value: FormData[K]) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault?.();
+    console.log('Form submitted with data:', formData);
+
+    // Validate all fields
+    const { amount, rate, currency, paymentMethod, duration } = formData;
+    if (amount <= 0) {
+      console.log('[CreateOrderForm] Validation failed: amount must be greater than 0', { amount });
+      return;
+    }
+    if (rate < 0) {
+      console.log('[CreateOrderForm] Validation failed: rate must be 0 or greater', { rate });
+      return;
+    }
+    if (!currency || !paymentMethod || !duration) {
+      console.log('[CreateOrderForm] Validation failed: currency, paymentMethod, and duration are required', {
+        currency,
+        paymentMethod,
+        duration,
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    await new Promise((r) => setTimeout(r, 1000));
+
+    const input: CreateOrderInput = {
+      type: orderType,
+      amount,
+      rate,
+      currency,
+      paymentMethod,
+      duration,
+    };
+
+    createOrder(input);
+    toast.success('Order created successfully!');
+    router.push('/');
+    setIsLoading(false);
+  };
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit(e);
+      }}
+      className="flex flex-col gap-6"
+    >
+      {/* USDC Amount */}
+      <div>
+        <Label className="mb-2 block text-body font-semibold text-gray-700">
+          USDC Amount
+        </Label>
+        <NumberField
+          value={formData.amount}
+          onChange={(v) => {
+            console.log('[CreateOrderForm] amount onChange:', v);
+            update('amount', v);
+          }}
+          min={0}
+          step={10}
+        />
+      </div>
+
+      {/* Currency + Rate */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="mb-2 block text-body font-semibold text-gray-700">
+            Fiat Currency
+          </Label>
+          <Select
+            value={formData.currency}
+            onValueChange={(v) => {
+              console.log('[CreateOrderForm] currency onChange:', v);
+              update('currency', v as Currency);
+            }}
+          >
+            <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
+              <SelectValue placeholder="Select currency" />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="mb-2 block text-body font-semibold text-gray-700">
+            Exchange Rate
+          </Label>
+        <NumberField
+          value={formData.rate}
+          onChange={(v) => {
+            console.log('[CreateOrderForm] rate onChange:', v);
+            update('rate', v);
+          }}
+          min={0}
+          step={0.01}
+        />
+        </div>
+      </div>
+
+      {/* Payment + Duration */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label className="mb-2 block text-body font-semibold text-gray-700">
+            Payment Method
+          </Label>
+          <Select
+            value={formData.paymentMethod}
+            onValueChange={(v) => {
+              console.log('[CreateOrderForm] paymentMethod onChange:', v);
+              update('paymentMethod', v as PaymentMethod);
+            }}
+          >
+            <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
+              <SelectValue placeholder="Select method" />
+            </SelectTrigger>
+            <SelectContent>
+              {PAYMENT_METHODS.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="mb-2 block text-body font-semibold text-gray-700">
+            Duration
+          </Label>
+          <Select
+            value={formData.duration}
+            onValueChange={(v) => {
+              console.log('[CreateOrderForm] duration onChange:', v);
+              update('duration', v);
+            }}
+          >
+            <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
+              <SelectValue placeholder="Select duration" />
+            </SelectTrigger>
+            <SelectContent>
+              {DURATIONS.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Warning */}
+      <Alert className="bg-yellow-50 border-yellow-200 text-yellow-800 [&_svg]:text-yellow-600">
+        <AlertTitle className="text-body-sm font-bold">Important</AlertTitle>
+        <AlertDescription className="text-body-sm text-yellow-800/90">
+          Orders are binding. Ensure your payment details are correct before
+          submitting.
+        </AlertDescription>
+      </Alert>
+
+      <Button
+        type="button"
+        onClick={handleSubmit}
+        disabled={isLoading}
+        className="mt-6 w-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 py-4 text-body font-bold text-white hover:opacity-90 transition-all duration-200 disabled:opacity-70"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="size-5 animate-spin" />
+            Creating...
+          </>
+        ) : (
+          `Create ${orderType === 'sell' ? 'Sell' : 'Buy'} Order`
+        )}
+      </Button>
+    </form>
+  );
+}
