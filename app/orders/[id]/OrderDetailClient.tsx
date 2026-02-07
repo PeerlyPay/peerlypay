@@ -281,7 +281,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   </div>
                   <div className="flex justify-between items-center border-t border-gray-100 pt-4">
                     <span className="text-body-sm font-medium text-gray-600">Amount</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {order.amount.toLocaleString()} USDC
                     </span>
                   </div>
@@ -293,7 +293,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Total</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {total.toLocaleString()} {order.currency}
                     </span>
                   </div>
@@ -308,7 +308,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
             {simStep >= 2 && (
               <FadeIn delay={0.12}>
                 <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-h5 text-gray-800 mb-4 font-[family-name:var(--font-space-grotesk)]">Payment Details</h3>
+                  <h3 className="mb-4 text-h5 font-display text-gray-800">Payment Details</h3>
                   <div className="space-y-3">
                     {BANK_DETAILS.map(({ label, value }) => (
                       <div
@@ -437,7 +437,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-500 text-white">
                 <Check className="size-10" strokeWidth={2.5} />
               </div>
-              <h2 className="text-h3 text-gray-900 mb-2 font-[family-name:var(--font-space-grotesk)]">Trade completed</h2>
+              <h2 className="mb-2 text-h3 font-display text-gray-900">Trade completed</h2>
               <p className="text-body text-gray-600 mb-8">
                 USDC has been released. Thank you for using PeerlyPay.
               </p>
@@ -446,13 +446,13 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                 <div className="grid gap-3">
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Amount</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {order.amount.toLocaleString()} USDC
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Total</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {total.toLocaleString()} {order.currency}
                     </span>
                   </div>

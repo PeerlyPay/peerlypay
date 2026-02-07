@@ -65,10 +65,12 @@ We built PeerlyPay for **remote workers, freelancers, and digital nomads** in em
 ```bash
 peerlypay/
 ├── app/                    # Next.js 16 App Router
-│   ├── orders/             # Marketplace & Escrow Interface
-│   ├── create-order/       # Order Creation Logic
-│   └── my-orders/          # Order History & Reputation
-├── components/             # UI Components (shadcn/ui)
+│   ├── orders/             # Marketplace, create, mine, and detail flows
+│   │   ├── create/
+│   │   ├── mine/
+│   │   └── [id]/
+│   └── profile/
+├── components/             # Reusable shared components + shadcn/ui primitives
 ├── contracts/              # Smart Contracts Workspace
 │   ├── .stellar/           # Soroban Network Configs
 │   └── contracts/
@@ -77,6 +79,13 @@ peerlypay/
 └── types/                  # TypeScript Interfaces
 
 ```
+
+## Frontend Styling Conventions
+
+* Prefer tokenized theme utilities over arbitrary values (for example `max-w-120` instead of `max-w-[480px]`).
+* Use CSS variables in `app/globals.css` as the source of truth for custom colors, shadows, gradients, and spacing.
+* Keep route-local components under `app/**`; put cross-route reusable components under `components/**`.
+* Treat `components/ui/**` as shadcn/Radix primitives and avoid unnecessary churn unless behavior must change.
 
 ## Getting Started
 

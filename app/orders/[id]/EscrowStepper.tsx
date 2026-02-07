@@ -70,7 +70,7 @@ export default function EscrowStepper({ currentStep }: EscrowStepperProps) {
             <span className="mt-1.5 text-center text-xs font-semibold truncate w-full px-0.5">
               {step.label}
             </span>
-            <span className="mt-0.5 text-center text-[10px] text-gray-500 truncate w-full px-0.5 leading-tight">
+            <span className="mt-0.5 w-full truncate px-0.5 text-center text-2xs leading-tight text-gray-500">
               {step.description}
             </span>
           </div>

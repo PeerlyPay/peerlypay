@@ -51,26 +51,38 @@ export default function MyOrdersPage() {
     return disputedOrders;
   }, [activeTab, activeOrders, completedOrders, disputedOrders]);
 
+  const meshGradient =
+    'radial-gradient(at 0% 0%, rgb(255 182 193 / 60%) 0px, transparent 50%), radial-gradient(at 100% 0%, rgb(173 216 255 / 60%) 0px, transparent 50%), radial-gradient(at 100% 100%, rgb(221 160 255 / 60%) 0px, transparent 50%), radial-gradient(at 0% 100%, rgb(152 251 200 / 50%) 0px, transparent 50%)';
+  const borderGradient =
+    'linear-gradient(135deg, rgb(255 182 193 / 80%), rgb(173 216 255 / 80%), rgb(221 160 255 / 80%), rgb(152 251 200 / 60%))';
+
   return (
     <>
       <h1 className="text-h3 text-black mb-6">My Orders</h1>
 
         {/* Your Reputation */}
-        <div
-          className="mb-6 rounded-xl border border-cyan-200 bg-cyan-50 p-5 cursor-pointer hover:bg-cyan-100/80 transition-colors"
-          role="button"
-          tabIndex={0}
-          onClick={() => {}}
-          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLElement).click(); }}
-        >
-          <p className="text-body-sm font-semibold text-cyan-800 mb-2">Your Reputation</p>
-          <p className="text-4xl font-bold text-cyan-700 font-[family-name:var(--font-space-grotesk)]">
-            ⭐ {user.reputation_score ?? 0}
-          </p>
-          <p className="text-body-sm text-cyan-700 mt-1">
-            {(user.reputation_score ?? 0)} completed trades
-          </p>
+      <div
+        className="group relative mb-6 cursor-pointer overflow-hidden rounded-xl shadow-balance-card transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+        role="button"
+        tabIndex={0}
+        onClick={() => {}}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLElement).click();
+        }}
+      >
+        <div className="absolute inset-0" style={{ background: meshGradient }} aria-hidden />
+        <div className="relative rounded-xl p-0.5" style={{ background: borderGradient }}>
+          <div className="rounded-lg border border-white/30 bg-white/55 p-5 backdrop-blur-3xl">
+            <p className="mb-2 text-body-sm font-semibold text-gray-800">Your Reputation</p>
+            <p className="text-4xl font-display font-bold text-dark-500">
+              ⭐ {user.reputation_score ?? 0}
+            </p>
+            <p className="mt-1 text-body-sm text-gray-700">
+              {(user.reputation_score ?? 0)} completed trades
+            </p>
+          </div>
         </div>
+      </div>
 
         {/* Stats section */}
         <div className="grid grid-cols-3 gap-3 mb-6">

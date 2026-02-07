@@ -37,12 +37,12 @@ export default function OrderCard({ order }: OrderCardProps) {
           handleClick();
         }
       }}
-      className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 text-left transition-all duration-200 hover:scale-[1.02] hover:border-primary-200 hover:shadow-lg"
+      className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 text-left transition-all duration-200 hover:scale-105 hover:border-primary-200 hover:shadow-lg"
     >
       {/* Row 1: Avatar + username + online */}
       <div className="flex items-center gap-3">
         <div className="relative shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-sm font-bold text-white font-[family-name:var(--font-space-grotesk)]">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-sm font-display font-bold text-white">
             {getAddressInitial(order.createdBy)}
           </div>
           <span
@@ -76,7 +76,7 @@ export default function OrderCard({ order }: OrderCardProps) {
       </div>
 
       {/* Row 3: Exchange rate - prominent */}
-      <p className="mt-2 text-3xl font-bold text-dark-500 font-[family-name:var(--font-space-grotesk)]">
+      <p className="mt-2 text-3xl font-display font-bold text-dark-500">
         1 USDC = {order.rate.toLocaleString('en-US')} {order.currency}
       </p>
 
@@ -96,7 +96,7 @@ export default function OrderCard({ order }: OrderCardProps) {
             e.stopPropagation();
             handleClick();
           }}
-          className="shrink-0 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-2.5 text-sm font-bold text-white hover:opacity-90 transition-all duration-200 font-[family-name:var(--font-space-grotesk)]"
+          className="shrink-0 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-6 py-2.5 text-sm font-display font-bold text-white hover:opacity-90 transition-all duration-200"
         >
           {actionLabel}
         </button>

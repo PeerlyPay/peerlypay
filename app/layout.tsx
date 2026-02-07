@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import { DM_Sans, Space_Grotesk } from 'next/font/google';
-import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
-import { Toaster } from '@/components/ui/sonner';
+import { DM_Sans, Space_Grotesk } from "next/font/google";
+import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const dmSans = DM_Sans({ 
+const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: '--font-dm-sans',
+  variable: "--font-dm-sans",
 });
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: '--font-space-grotesk',
+  variable: "--font-space-grotesk",
 });
 
 export const metadata: Metadata = {
@@ -30,9 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans`}>
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white max-w-120 mx-auto px-4 pt-20 pb-24">
           <Header />
-          <main className="max-w-[480px] mx-auto px-4 pt-20 pb-24">{children}</main>
+          {children}
           <BottomNav />
         </div>
         <Toaster />

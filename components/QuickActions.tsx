@@ -6,6 +6,7 @@ import {
   ArrowUpFromLine,
   HelpCircle,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
 const actions = [
@@ -22,7 +23,7 @@ export default function QuickActions() {
         <Button
           key={id}
           variant="ghost"
-          onClick={() => console.log(id)}
+          onClick={() => toast.info(`${label} action coming soon`)}
           className="group flex flex-col items-center gap-2 py-3 h-auto text-gray-600 border-1 border-primary-500 rounded-xl hover:bg-gray-50 hover:text-magenta-600 hover:scale-105 transition-all duration-200"
         >
           <Icon className="w-8 h-8 text-magenta-500 group-hover:text-magenta-600" />

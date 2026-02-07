@@ -87,8 +87,6 @@ function NumberField({
 }
 
 export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
-  console.log('CreateOrderForm rendered with orderType:', orderType);
-
   const router = useRouter();
   const { createOrder } = useStore();
   const [formData, setFormData] = useState<FormData>(initialFormData);
@@ -100,24 +98,18 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
-    console.log('Form submitted with data:', formData);
 
-    // Validate all fields
     const { amount, rate, currency, paymentMethod, duration } = formData;
     if (amount <= 0) {
-      console.log('[CreateOrderForm] Validation failed: amount must be greater than 0', { amount });
+      toast.error('Amount must be greater than 0.');
       return;
     }
     if (rate < 0) {
-      console.log('[CreateOrderForm] Validation failed: rate must be 0 or greater', { rate });
+      toast.error('Rate must be 0 or greater.');
       return;
     }
     if (!currency || !paymentMethod || !duration) {
-      console.log('[CreateOrderForm] Validation failed: currency, paymentMethod, and duration are required', {
-        currency,
-        paymentMethod,
-        duration,
-      });
+      toast.error('Please complete all required fields.');
       return;
     }
 
@@ -154,10 +146,7 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
         </Label>
         <NumberField
           value={formData.amount}
-          onChange={(v) => {
-            console.log('[CreateOrderForm] amount onChange:', v);
-            update('amount', v);
-          }}
+          onChange={(v) => update('amount', v)}
           min={0}
           step={10}
         />
@@ -171,10 +160,7 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
           </Label>
           <Select
             value={formData.currency}
-            onValueChange={(v) => {
-              console.log('[CreateOrderForm] currency onChange:', v);
-              update('currency', v as Currency);
-            }}
+            onValueChange={(v) => update('currency', v as Currency)}
           >
             <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
               <SelectValue placeholder="Select currency" />
@@ -192,15 +178,12 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
           <Label className="mb-2 block text-body font-semibold text-gray-700">
             Exchange Rate
           </Label>
-        <NumberField
-          value={formData.rate}
-          onChange={(v) => {
-            console.log('[CreateOrderForm] rate onChange:', v);
-            update('rate', v);
-          }}
-          min={0}
-          step={0.01}
-        />
+          <NumberField
+            value={formData.rate}
+            onChange={(v) => update('rate', v)}
+            min={0}
+            step={0.01}
+          />
         </div>
       </div>
 
@@ -212,10 +195,7 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
           </Label>
           <Select
             value={formData.paymentMethod}
-            onValueChange={(v) => {
-              console.log('[CreateOrderForm] paymentMethod onChange:', v);
-              update('paymentMethod', v as PaymentMethod);
-            }}
+            onValueChange={(v) => update('paymentMethod', v as PaymentMethod)}
           >
             <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
               <SelectValue placeholder="Select method" />
@@ -235,10 +215,7 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
           </Label>
           <Select
             value={formData.duration}
-            onValueChange={(v) => {
-              console.log('[CreateOrderForm] duration onChange:', v);
-              update('duration', v);
-            }}
+            onValueChange={(v) => update('duration', v)}
           >
             <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
               <SelectValue placeholder="Select duration" />
