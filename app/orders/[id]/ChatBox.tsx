@@ -14,7 +14,6 @@ export interface Message {
 }
 
 export interface ChatBoxProps {
-  orderId: string;
   messages: Message[];
   onSendMessage: (text: string) => void;
 }
@@ -33,7 +32,6 @@ function formatTime(date: Date): string {
 }
 
 export default function ChatBox({
-  orderId,
   messages,
   onSendMessage,
 }: ChatBoxProps) {

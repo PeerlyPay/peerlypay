@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Space_Grotesk } from 'next/font/google';
+import Header from '@/components/Header';
+import BottomNav from '@/components/BottomNav';
 import { Toaster } from '@/components/ui/sonner';
 import "./globals.css";
 
@@ -28,7 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans`}>
-        {children}
+        <div className="min-h-screen bg-white">
+          <Header />
+          <main className="max-w-[480px] mx-auto px-4 pt-20 pb-24">{children}</main>
+          <BottomNav />
+        </div>
         <Toaster />
       </body>
     </html>
