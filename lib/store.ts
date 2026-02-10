@@ -4,7 +4,8 @@ import { User, Order, CreateOrderInput, OrderStatus } from '@/types';
 interface AppState {
   user: User;
   orders: Order[];
-  connectWallet: () => void;
+  connectWallet: (walletAddress: string, walletOwner?: string | null, walletStatus?: string | null) => void;
+  setWalletStatus: (walletStatus: string | null) => void;
   disconnectWallet: () => void;
   createOrder: (input: CreateOrderInput) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
@@ -13,6 +14,8 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
   user: {
     walletAddress: null,
+    walletOwner: null,
+    walletStatus: 'logged-out',
     isConnected: false,
     balance: {
       usd: 0,
@@ -75,13 +78,24 @@ export const useStore = create<AppState>((set) => ({
     },
   ],
   
-  connectWallet: () => {
+  connectWallet: (walletAddress, walletOwner = null, walletStatus = 'logged-in') => {
     set((state) => ({
       user: {
         ...state.user,
-        walletAddress: 'GA29EB...UFEA',
+        walletAddress,
+        walletOwner,
+        walletStatus,
         isConnected: true,
         reputation_score: state.user.reputation_score ?? 12,
+      },
+    }));
+  },
+
+  setWalletStatus: (walletStatus) => {
+    set((state) => ({
+      user: {
+        ...state.user,
+        walletStatus,
       },
     }));
   },
@@ -91,23 +105,26 @@ export const useStore = create<AppState>((set) => ({
       user: {
         ...state.user,
         walletAddress: null,
+        walletOwner: null,
+        walletStatus: 'logged-out',
         isConnected: false,
       },
     }));
   },
-  
-  createOrder: (input: CreateOrderInput) => {
-    const newOrder: Order = {
-      id: `order_${Date.now()}`,
-      ...input,
-      status: 'open',
-      createdAt: new Date(),
-      createdBy: '0x29Eb...8FEA',
-      reputation_score: 12,
-    };
 
+  createOrder: (input: CreateOrderInput) => {
     set((state) => ({
-      orders: [...state.orders, newOrder],
+      orders: [
+        ...state.orders,
+        {
+          id: `order_${Date.now()}`,
+          ...input,
+          status: 'open',
+          createdAt: new Date(),
+          createdBy: state.user.walletAddress ?? 'wallet-not-connected',
+          reputation_score: state.user.reputation_score ?? 12,
+        },
+      ],
     }));
   },
 

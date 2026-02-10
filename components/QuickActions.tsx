@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@crossmint/client-sdk-react-ui';
 import {
   Wallet,
   ArrowDownToLine,
@@ -13,8 +14,6 @@ import { useStore } from '@/lib/store';
 import WalletModal from '@/components/WalletModal';
 import DepositModal from '@/components/DepositModal';
 
-const FULL_ADDRESS = 'GA29EBXKQMQHAECBR7NSMAQM6GHG3YPEESMUFEA';
-
 const actions = [
   { icon: Wallet, label: 'Wallet', id: 'wallet' },
   { icon: ArrowDownToLine, label: 'Deposit', id: 'deposit' },
@@ -24,8 +23,18 @@ const actions = [
 
 export default function QuickActions() {
   const { user, disconnectWallet } = useStore();
+  const { logout } = useAuth();
   const [walletOpen, setWalletOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
+  const walletAddress = user.walletAddress ?? '';
+
+  const handleDisconnect = async () => {
+    try {
+      await logout();
+    } catch {}
+
+    disconnectWallet();
+  };
 
   const handleAction = (id: string) => {
     switch (id) {
@@ -59,16 +68,16 @@ export default function QuickActions() {
       <WalletModal
         isOpen={walletOpen}
         onClose={() => setWalletOpen(false)}
-        walletAddress={user.walletAddress || FULL_ADDRESS}
+        walletAddress={walletAddress}
         balanceUsdc={user.balance.usdc}
         balanceXlm={5.5}
-        onDisconnect={disconnectWallet}
+        onDisconnect={() => void handleDisconnect()}
       />
 
       <DepositModal
         isOpen={depositOpen}
         onClose={() => setDepositOpen(false)}
-        walletAddress={user.walletAddress || FULL_ADDRESS}
+        walletAddress={walletAddress}
       />
     </>
   );
