@@ -2,10 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
-import BalanceCard from '@/components/BalanceCard';
-import QuickActions from '@/components/QuickActions';
+import QuickTradeInput from '@/components/QuickTradeInput';
 
-export default function QuickTradePage() {
+export default function TradePage() {
   const router = useRouter();
   const { user, loading } = useUser();
 
@@ -19,10 +18,5 @@ export default function QuickTradePage() {
     return <div className="flex items-center justify-center py-20">Cargando...</div>;
   }
 
-  return (
-    <>
-      <BalanceCard />
-      <QuickActions />
-    </>
-  );
+  return <QuickTradeInput />;
 }

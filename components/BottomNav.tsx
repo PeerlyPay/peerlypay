@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileText, User, LayoutDashboard, Activity } from 'lucide-react';
+import { Home, FileText, User, LayoutDashboard, Activity, Zap } from 'lucide-react';
 import { useUser } from '@/contexts/UserContext';
 
 export default function BottomNav() {
@@ -14,6 +14,7 @@ export default function BottomNav() {
 
   const freelancerTabs = [
     { href: '/quick-trade', icon: Home, label: 'Home' },
+    { href: '/trade', icon: Zap, label: 'Trade' },
     { href: '/orders', icon: FileText, label: 'Orders' },
     { href: '/profile', icon: User, label: 'Profile' },
   ];
