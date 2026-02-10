@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
-import { BottomNav } from '@/components/BottomNav';
+import BottomNav from '@/components/BottomNav';
 
 export default function ProDashboardPage() {
   const router = useRouter();
