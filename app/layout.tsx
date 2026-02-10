@@ -1,23 +1,21 @@
 import type { Metadata } from "next";
-import { DM_Sans, Space_Grotesk } from 'next/font/google';
-import { Toaster } from '@/components/ui/sonner';
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { UserProvider } from "@/contexts/UserContext"; // ← AGREGAR ESTO
 
-const dmSans = DM_Sans({ 
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: '--font-dm-sans',
 });
 
-const spaceGrotesk = Space_Grotesk({
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: '--font-space-grotesk',
 });
 
 export const metadata: Metadata = {
   title: "PeerlyPay",
-  description: "Work Global, Cash Out Local",
+  description: "P2P Exchange on Stellar",
 };
 
 export default function RootLayout({
@@ -27,9 +25,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans`}>
-        {children}
-        <Toaster />
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <UserProvider>    {/* ← AGREGAR ESTO */}
+          {children}
+        </UserProvider>   {/* ← AGREGAR ESTO */}
       </body>
     </html>
   );

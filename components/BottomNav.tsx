@@ -1,56 +1,57 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
-import { Home, Store, Plus, Package, User } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Home, FileText, User, LayoutDashboard, Activity } from 'lucide-react';
+import { useUser } from '@/contexts/UserContext';
 
-const TABS = [
-  { label: 'Home', icon: Home, href: '/' },
-  { label: 'Market', icon: Store, href: '/orders' },
-  { label: 'Create', icon: Plus, href: '/create-order' },
-  { label: 'Orders', icon: Package, href: '/my-orders' },
-  { label: 'Profile', icon: User, href: '/profile' },
-] as const;
-
-export default function BottomNav() {
+export function BottomNav() {
   const pathname = usePathname();
-  const router = useRouter();
+  const { user, isFreelancer, isMarketMaker, loading } = useUser();
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
-  };
+  // No mostrar si está cargando o no hay usuario
+  if (loading || !user) return null;
+
+  const freelancerTabs = [
+    { href: '/quick-trade', icon: Home, label: 'Home' },
+    { href: '/orders', icon: FileText, label: 'Orders' },
+    { href: '/profile', icon: User, label: 'Profile' },
+  ];
+
+  const marketMakerTabs = [
+    { href: '/pro', icon: LayoutDashboard, label: 'Dashboard' },
+    { href: '/monitor', icon: Activity, label: 'Monitor' },
+    { href: '/orders', icon: FileText, label: 'Trades' },
+    { href: '/profile', icon: User, label: 'Profile' },
+  ];
+
+  // CRITICAL: usar la condición correcta
+  const tabs = isFreelancer ? freelancerTabs : marketMakerTabs;
+
+  console.log('BottomNav - user role:', user.role); // DEBUG
+  console.log('BottomNav - isFreelancer:', isFreelancer); // DEBUG
+  console.log('BottomNav - tabs:', tabs); // DEBUG
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 z-40 max-w-[480px] mx-auto bg-white border-t border-gray-200 shadow-lg pb-[env(safe-area-inset-bottom)]"
-      aria-label="Bottom navigation"
-    >
-      <div className="flex items-center justify-around h-16 px-1">
-        {TABS.map((tab) => {
-          const active = isActive(tab.href);
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+      <div className="flex justify-around items-center h-16 max-w-md mx-auto">
+        {tabs.map((tab) => {
+          const isActive = pathname === tab.href;
           const Icon = tab.icon;
+          
           return (
-            <button
+            <Link
               key={tab.href}
-              type="button"
-              onClick={() => router.push(tab.href)}
-              className="flex flex-col items-center justify-center gap-1 min-w-0 flex-1 py-2 text-gray-400 hover:text-gray-600 transition-colors"
-              aria-current={active ? 'page' : undefined}
-              aria-label={tab.label}
+              href={tab.href}
+              className={`flex flex-col items-center justify-center gap-1 px-4 py-2 transition-colors ${
+                isActive 
+                  ? 'text-pink-600' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
-              <Icon
-                className={`w-6 h-6 shrink-0 ${
-                  active ? 'text-primary-500' : ''
-                }`}
-              />
-              <span
-                className={`text-xs font-medium truncate max-w-full ${
-                  active ? 'text-primary-500' : ''
-                }`}
-              >
-                {tab.label}
-              </span>
-            </button>
+              <Icon className="w-5 h-5" />
+              <span className="text-xs font-medium">{tab.label}</span>
+            </Link>
           );
         })}
       </div>
