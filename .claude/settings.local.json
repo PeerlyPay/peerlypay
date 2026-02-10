@@ -8,7 +8,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nmerge: resolve conflicts with origin/develop, preserve UserProvider and role-based nav\n\nMerged remote changes \\(DM_Sans/Space_Grotesk fonts, layout structure with\nHeader/BottomNav/Toaster\\) with local role-based navigation \\(UserProvider,\nRoleSelection, conditional freelancer/market-maker tabs in BottomNav\\).\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
     ]
   }
 }
