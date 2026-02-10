@@ -47,7 +47,7 @@ export default function Dashboard() {
   // Mostrar loading mientras carga
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-gray-500">Cargando...</div>
       </div>
     );

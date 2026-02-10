@@ -13,8 +13,6 @@ import {
   X,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
 import OrderCard from '@/components/OrderCard';
 import OrderCardSkeleton from '@/components/OrderCardSkeleton';
 import EmptyState from '@/components/EmptyState';
@@ -101,12 +99,9 @@ export default function MarketplaceContent() {
   const currentSortOption = sortOptions.find((o) => o.value === sortBy);
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
-
-      <main className="max-w-[480px] mx-auto px-4 pt-20 pb-24">
-        {/* Page title */}
-        <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-space-grotesk)] mb-6">
+    <>
+      {/* Page title */}
+      <h1 className="text-2xl font-bold text-gray-900 font-[family-name:var(--font-space-grotesk)] mb-6">
           Marketplace
         </h1>
 
@@ -315,9 +310,6 @@ export default function MarketplaceContent() {
             )}
           </FadeIn>
         )}
-      </main>
-
-      <BottomNav />
-    </div>
+    </>
   );
 }
