@@ -3,7 +3,8 @@ target
 
 # Local Soroban settings
 .soroban
-Makefile
+.artifacts/
+.env.local
 
 # Ignore JetBrains IDE settings
 .idea/
