@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Package } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import Header from '@/components/Header';
-import { BottomNav } from '@/components/BottomNav';
 import OrderCard from '@/components/OrderCard';
 import OrderCardSkeleton from '@/components/OrderCardSkeleton';
 import EmptyState from '@/components/EmptyState';
@@ -32,11 +30,8 @@ export default function OrdersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
-
-      <main className="max-w-[480px] mx-auto px-4 pt-20 pb-24">
-        <h1 className="text-h3 text-black mb-6">Marketplace</h1>
+    <>
+      <h1 className="text-h3 text-black mb-6">Marketplace</h1>
 
         {/* Tab switcher */}
         <div className="flex gap-6 border-b border-gray-200 mb-6">
@@ -87,9 +82,6 @@ export default function OrdersPage() {
             />
           </FadeIn>
         )}
-      </main>
-
-      <BottomNav />
-    </div>
+    </>
   );
 }

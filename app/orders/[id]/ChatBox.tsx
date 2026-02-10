@@ -14,7 +14,6 @@ export interface Message {
 }
 
 export interface ChatBoxProps {
-  orderId: string;
   messages: Message[];
   onSendMessage: (text: string) => void;
 }
@@ -33,7 +32,6 @@ function formatTime(date: Date): string {
 }
 
 export default function ChatBox({
-  orderId,
   messages,
   onSendMessage,
 }: ChatBoxProps) {
@@ -56,7 +54,7 @@ export default function ChatBox({
     <div className="rounded-xl border border-gray-200 bg-white p-4 transition-all duration-200">
       <header className="mb-4 flex items-center gap-2">
         <MessageSquare className="size-5 text-gray-600 shrink-0" />
-        <h3 className="text-h5 text-gray-800 font-[family-name:var(--font-space-grotesk)]">Chat</h3>
+        <h3 className="text-h5 text-gray-800 font-display">Chat</h3>
       </header>
 
       <div className="max-h-80 space-y-3 overflow-y-auto">
@@ -70,8 +68,8 @@ export default function ChatBox({
                 isSystem
                   ? 'mx-0 max-w-full bg-primary-50 border border-primary-100 text-left'
                   : isOwn
-                    ? 'ml-auto max-w-[85%] bg-magenta/10 text-right'
-                    : 'mr-auto max-w-[85%] bg-gray-50 text-left'
+                    ? 'ml-auto max-w-5/6 bg-magenta/10 text-right'
+                    : 'mr-auto max-w-5/6 bg-gray-50 text-left'
               }`}
             >
               <p className="mb-1 text-xs text-gray-500">

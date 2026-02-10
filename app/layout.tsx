@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Space_Grotesk } from "next/font/google";
+import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
-import { UserProvider } from "@/contexts/UserContext"; // ← AGREGAR ESTO
+import { UserProvider } from "@/contexts/UserContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dm-sans",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-space-grotesk",
 });
 
 export const metadata: Metadata = {
@@ -25,12 +30,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <UserProvider>    {/* ← AGREGAR ESTO */}
-          {children}
-        </UserProvider>   {/* ← AGREGAR ESTO */}
+      <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans`}>
+        <UserProvider>
+          <div className="min-h-screen bg-white max-w-120 mx-auto px-4 pt-20 pb-24">
+            <Header />
+            {children}
+            <BottomNav />
+          </div>
+          <Toaster />
+        </UserProvider>
       </body>
     </html>
   );

@@ -4,14 +4,11 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AlertTriangle, Copy, Loader2, Check, Star, RefreshCw, Wallet, Banknote, CircleCheck, PartyPopper } from 'lucide-react';
-import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
-import EscrowStepper from '@/components/EscrowStepper';
-import ChatBox, { type Message } from '@/components/ChatBox';
 import FadeIn from '@/components/FadeIn';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/lib/store';
-import type { OrderStatus } from '@/types';
+import ChatBox, { type Message } from './ChatBox';
+import EscrowStepper from './EscrowStepper';
 
 const BANK_DETAILS = [
   { label: 'Bank', value: 'Banco Galicia' },
@@ -42,17 +39,34 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const user = useStore((s) => s.user);
   const updateOrderStatus = useStore((s) => s.updateOrderStatus);
 
-  const [simStep, setSimStep] = useState(0);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [countdown, setCountdown] = useState<number | null>(null);
-
   const order = useMemo(
     () => orders.find((o) => o.id === orderId),
     [orders, orderId]
   );
+
+  const [simStep, setSimStep] = useState(0);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (!order) return [];
+
+    return [
+      {
+        id: '1',
+        sender: order.createdBy,
+        text: 'Hello! I have the funds ready in escrow.',
+        timestamp: new Date(Date.now() - 3600000),
+      },
+      {
+        id: '2',
+        sender: user.walletAddress || '',
+        text: 'Great! I will send the bank transfer now.',
+        timestamp: new Date(Date.now() - 1800000),
+      },
+    ];
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [countdown, setCountdown] = useState<number | null>(3);
 
   const isSeller =
     order &&
@@ -82,58 +96,17 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     [user.walletAddress]
   );
 
-  useEffect(() => {
-    if (order && messages.length === 0) {
-      setMessages([
-        {
-          id: '1',
-          sender: order.createdBy,
-          text: 'Hello! I have the funds ready in escrow.',
-          timestamp: new Date(Date.now() - 3600000),
-        },
-        {
-          id: '2',
-          sender: user.walletAddress || '',
-          text: 'Great! I will send the bank transfer now.',
-          timestamp: new Date(Date.now() - 1800000),
-        },
-      ]);
-    }
-  }, [order?.id, order?.createdBy, user.walletAddress]);
-
-  // Auto-advance demo: 3s countdown per step, then advance (regardless of role for demo)
-  useEffect(() => {
-    if (simStep >= 4 || isUpdating) {
-      setCountdown(null);
-      return;
-    }
-    setCountdown(3);
-    const id = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          clearInterval(id);
-          if (simStep === 0) advanceToStep1();
-          else if (simStep === 1) advanceToStep2();
-          else if (simStep === 2) advanceToStep3();
-          else if (simStep === 3) advanceToStep4();
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [simStep, isUpdating]);
-
-  const advanceToStep1 = async () => {
+  const advanceToStep1 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
     setMessages((prev) => addSystemMessage(prev, 'Trustline activated. You can now receive USDC.'));
     setSimStep(1);
+    setCountdown(3);
     toast.success('Trustline activated! Proceed to deposit.');
     setIsUpdating(false);
-  };
+  }, []);
 
-  const advanceToStep2 = async () => {
+  const advanceToStep2 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
     setMessages((prev) =>
@@ -143,22 +116,24 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
       )
     );
     setSimStep(2);
+    setCountdown(3);
     toast.success('Deposit confirmed! Waiting for payment...');
     setIsUpdating(false);
-  };
+  }, []);
 
-  const advanceToStep3 = async () => {
+  const advanceToStep3 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
     setMessages((prev) =>
       addSystemMessage(prev, 'Buyer marked payment as sent.')
     );
     setSimStep(3);
+    setCountdown(3);
     toast.info('Payment marked. Waiting for seller confirmation...');
     setIsUpdating(false);
-  };
+  }, []);
 
-  const advanceToStep4 = async () => {
+  const advanceToStep4 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
     setMessages((prev) =>
@@ -166,26 +141,45 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     );
     if (order) updateOrderStatus(order.id, 'completed');
     setSimStep(4);
+    setCountdown(null);
     toast.success('Funds released! Trade completed 🎉');
     setIsUpdating(false);
-  };
+  }, [order, updateOrderStatus]);
+
+  // Auto-advance demo: 3s countdown per step, then advance (regardless of role for demo)
+  useEffect(() => {
+    if (simStep >= 4 || isUpdating) return;
+
+    const id = setInterval(() => {
+      setCountdown((prev) => {
+        const current = prev ?? 3;
+        if (current <= 1) {
+          clearInterval(id);
+          if (simStep === 0) advanceToStep1();
+          else if (simStep === 1) advanceToStep2();
+          else if (simStep === 2) advanceToStep3();
+          else if (simStep === 3) advanceToStep4();
+          return null;
+        }
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [advanceToStep1, advanceToStep2, advanceToStep3, advanceToStep4, isUpdating, simStep]);
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-white">
-        <Header />
-        <main className="max-w-[480px] mx-auto px-4 pt-20 pb-24">
-          <p className="text-center text-gray-600">Order not found</p>
-          <Button
-            variant="outline"
-            className="mt-4 w-full transition-all duration-200"
-            onClick={() => router.push('/orders')}
-          >
-            Back to Marketplace
-          </Button>
-        </main>
-        <BottomNav />
-      </div>
+      <>
+        <p className="text-center text-gray-600">Order not found</p>
+        <Button
+          variant="outline"
+          className="mt-4 w-full transition-all duration-200"
+          onClick={() => router.push('/orders')}
+        >
+          Back to Marketplace
+        </Button>
+      </>
     );
   }
 
@@ -203,10 +197,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const StatusIcon = stepInfo.icon;
 
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
-
-      <main className="max-w-[480px] mx-auto px-4 pt-20 pb-24 space-y-6">
+    <div className="space-y-6">
         {/* Top row: Status badge + countdown */}
         <FadeIn>
           <div className="flex flex-wrap items-center gap-3">
@@ -290,7 +281,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   </div>
                   <div className="flex justify-between items-center border-t border-gray-100 pt-4">
                     <span className="text-body-sm font-medium text-gray-600">Amount</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {order.amount.toLocaleString()} USDC
                     </span>
                   </div>
@@ -302,7 +293,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Total</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {total.toLocaleString()} {order.currency}
                     </span>
                   </div>
@@ -317,7 +308,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
             {simStep >= 2 && (
               <FadeIn delay={0.12}>
                 <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-h5 text-gray-800 mb-4 font-[family-name:var(--font-space-grotesk)]">Payment Details</h3>
+                  <h3 className="mb-4 text-h5 font-display text-gray-800">Payment Details</h3>
                   <div className="space-y-3">
                     {BANK_DETAILS.map(({ label, value }) => (
                       <div
@@ -346,7 +337,6 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
             <FadeIn delay={0.15}>
               <div className="w-full">
                 <ChatBox
-                  orderId={order.id}
                   messages={messages}
                   onSendMessage={handleSendMessage}
                 />
@@ -447,7 +437,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
               <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-500 text-white">
                 <Check className="size-10" strokeWidth={2.5} />
               </div>
-              <h2 className="text-h3 text-gray-900 mb-2 font-[family-name:var(--font-space-grotesk)]">Trade completed</h2>
+              <h2 className="mb-2 text-h3 font-display text-gray-900">Trade completed</h2>
               <p className="text-body text-gray-600 mb-8">
                 USDC has been released. Thank you for using PeerlyPay.
               </p>
@@ -456,13 +446,13 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                 <div className="grid gap-3">
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Amount</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {order.amount.toLocaleString()} USDC
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Total</span>
-                    <span className="text-h4 text-primary-600 font-[family-name:var(--font-space-grotesk)]">
+                    <span className="text-h4 font-display text-primary-600">
                       {total.toLocaleString()} {order.currency}
                     </span>
                   </div>
@@ -514,9 +504,6 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
             </div>
           </FadeIn>
         )}
-      </main>
-
-      <BottomNav />
     </div>
   );
 }

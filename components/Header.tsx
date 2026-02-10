@@ -24,8 +24,8 @@ export default function Header() {
   const [isConnecting, setIsConnecting] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b shadow-sm">
-      <div className="max-w-[480px] mx-auto px-4 py-3 flex items-center justify-between gap-2">
+    <header className="fixed top-0 left-1/2 z-50 w-full max-w-120 -translate-x-1/2 border-b bg-white shadow-sm">
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
         {/* Logo */}
         <div className="flex items-center gap-2 min-w-0">
           <Image
@@ -35,7 +35,7 @@ export default function Header() {
             height={28}
             className="shrink-0 object-contain h-7 w-7"
           />
-          <span className="font-bold text-xl font-[family-name:var(--font-space-grotesk)] truncate">
+          <span className="font-display font-bold text-xl truncate">
             PeerlyPay
           </span>
         </div>
@@ -76,7 +76,7 @@ export default function Header() {
                   {walletAddress ? shortenAddress(walletAddress) : '0x...'}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[10rem]">
+              <DropdownMenuContent align="end" className="min-w-40">
                 <DropdownMenuItem
                   onClick={() => {
                     disconnectWallet();
