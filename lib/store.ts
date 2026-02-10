@@ -79,7 +79,7 @@ export const useStore = create<AppState>((set) => ({
     set((state) => ({
       user: {
         ...state.user,
-        walletAddress: '0x29Eb...8FEA',
+        walletAddress: 'GA29EB...UFEA',
         isConnected: true,
         reputation_score: state.user.reputation_score ?? 12,
       },

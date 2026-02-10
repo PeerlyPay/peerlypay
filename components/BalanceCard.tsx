@@ -7,8 +7,6 @@ export default function BalanceCard() {
   const { usd, usdc } = user.balance;
 
   const formattedUsd = usd.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -18,27 +16,22 @@ export default function BalanceCard() {
     maximumFractionDigits: 2,
   });
 
-  const meshGradient =
-    'radial-gradient(at 0% 0%, rgb(255 182 193 / 60%) 0px, transparent 50%), radial-gradient(at 100% 0%, rgb(173 216 255 / 60%) 0px, transparent 50%), radial-gradient(at 100% 100%, rgb(221 160 255 / 60%) 0px, transparent 50%), radial-gradient(at 0% 100%, rgb(152 251 200 / 50%) 0px, transparent 50%)';
-  const borderGradient =
-    'linear-gradient(135deg, rgb(255 182 193 / 80%), rgb(173 216 255 / 80%), rgb(221 160 255 / 80%), rgb(152 251 200 / 60%))';
-
   return (
-    <div className="group relative mt-6 overflow-hidden rounded-3xl shadow-balance-card transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-      {/* Vibrant mesh gradient background */}
-      <div className="absolute inset-0" style={{ background: meshGradient }} aria-hidden />
-
-      {/* 2px gradient border wrapper — gradient shows in the ring around the glass */}
-      <div className="relative z-10 rounded-3xl bg-balance-border p-0.5" style={{ background: borderGradient }}>
-        {/* Glass overlay with content */}
-        <div className="rounded-balance-inner border border-white/30 bg-white/50 px-6 py-10 text-center backdrop-blur-3xl transition-all duration-300">
-          <p className="text-caption uppercase tracking-wide text-gray-500">
+    <div className="mt-6 flex w-full flex-col items-center justify-center rounded-[10px] border border-[#e5e5e5] bg-[#f9fafb] p-5 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
+      <div className="flex w-full flex-col items-center justify-center gap-0 p-2.5">
+        <div className="flex flex-col items-center">
+          <p className="font-sans text-[10px] font-semibold uppercase leading-[1.5] tracking-[0.5px] text-[#585d69]">
             TOTAL BALANCE
           </p>
-          <p className="mt-2 text-6xl font-display font-bold text-gray-900">
-            {formattedUsd}
-          </p>
-          <p className="mt-1 text-lg text-gray-400">
+          <div className="flex items-center gap-1 text-[#191919]">
+            <span className="font-display text-[30px] font-semibold tracking-[-1.2px]">
+              $
+            </span>
+            <span className="font-display text-[60px] font-semibold tracking-[-3px]">
+              {formattedUsd}
+            </span>
+          </div>
+          <p className="font-mono text-base leading-[1.5] text-[#585d69]">
             ≈ {formattedUsdc} USDC
           </p>
         </div>
