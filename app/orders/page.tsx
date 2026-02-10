@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Package } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
+import { BottomNav } from '@/components/BottomNav';
 import OrderCard from '@/components/OrderCard';
 import OrderCardSkeleton from '@/components/OrderCardSkeleton';
 import EmptyState from '@/components/EmptyState';

@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -18,16 +16,16 @@ export default function Dashboard() {
   const router = useRouter();
   const { user, setUser, loading } = useUser();
 
-  // Si el usuario ya tiene rol, redirigir a su página
-  useEffect(() => {
-    if (!loading && user) {
-      if (user.role === 'FREELANCER') {
-        router.push('/quick-trade');
-      } else if (user.role === 'MARKET_MAKER') {
-        router.push('/pro');
-      }
-    }
-  }, [user, loading, router]);
+  // COMENTADO: Esto estaba causando conflicto con el redirect de /pro
+  // useEffect(() => {
+  //   if (!loading && user) {
+  //     if (user.role === 'FREELANCER') {
+  //       router.push('/quick-trade');
+  //     } else if (user.role === 'MARKET_MAKER') {
+  //       router.push('/pro');
+  //     }
+  //   }
+  // }, [user, loading, router]);
 
   // Manejar selección de rol
   const handleRoleSelected = (role: UserRole) => {

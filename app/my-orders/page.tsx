@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Package } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
+import { BottomNav } from '@/components/BottomNav';  // ← CAMBIADO AQUÍ
 import OrderCard from '@/components/OrderCard';
 import EmptyState from '@/components/EmptyState';
 import type { Order } from '@/types';
