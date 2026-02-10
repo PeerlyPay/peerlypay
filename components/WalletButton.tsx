@@ -1,0 +1,180 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
+import { Wallet, Loader2, Copy, ExternalLink, Power, ChevronDown } from 'lucide-react';
+import { useStore } from '@/lib/store';
+
+const FULL_ADDRESS = 'GA29EBXKQMQHAECBR7NSMAQM6GHG3YPEESMUFEA';
+
+function shortenAddress(address: string): string {
+  if (address.length <= 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+export default function WalletButton() {
+  const { user, connectWallet, disconnectWallet } = useStore();
+  const { isConnected, walletAddress, balance } = user;
+
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // Close on Escape
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsOpen(false);
+    }
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    // Mock Freighter connection delay
+    await new Promise((r) => setTimeout(r, 800));
+    connectWallet();
+    toast.success('Wallet conectada exitosamente');
+    setIsConnecting(false);
+  };
+
+  const handleDisconnect = () => {
+    disconnectWallet();
+    setIsOpen(false);
+    toast.info('Wallet desconectada');
+  };
+
+  const handleCopyAddress = async () => {
+    await navigator.clipboard.writeText(FULL_ADDRESS);
+    toast.success('Direccion copiada');
+    setIsOpen(false);
+  };
+
+  const handleOpenExplorer = () => {
+    window.open(
+      `https://stellar.expert/explorer/testnet/account/${FULL_ADDRESS}`,
+      '_blank'
+    );
+    setIsOpen(false);
+  };
+
+  const formattedBalance = balance.usdc.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  // --- Disconnected ---
+  if (!isConnected) {
+    return (
+      <button
+        disabled={isConnecting}
+        onClick={handleConnect}
+        className="flex items-center gap-2 rounded-lg bg-magenta px-4 py-2 font-sans text-sm font-semibold text-white transition-all duration-200 hover:bg-magenta-600 active:scale-[0.97] disabled:opacity-70"
+      >
+        {isConnecting ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            <span>Conectando...</span>
+          </>
+        ) : (
+          <>
+            <Wallet className="size-4" />
+            <span>Connect Wallet</span>
+          </>
+        )}
+      </button>
+    );
+  }
+
+  // --- Connected ---
+  const displayAddr = walletAddress ? shortenAddress(walletAddress) : '0x...';
+
+  return (
+    <div ref={dropdownRef} className="relative">
+      {/* Trigger */}
+      <button
+        onClick={() => setIsOpen((o) => !o)}
+        className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 font-mono text-sm transition-all duration-200 hover:border-gray-300 hover:shadow-sm active:scale-[0.98]"
+      >
+        <span className="text-yellow-500 text-xs">&#9889;</span>
+        <span className="font-semibold text-gray-900">${formattedBalance}</span>
+        <span className="text-gray-300">|</span>
+        <span className="inline-flex size-2 rounded-full bg-emerald-400" />
+        <span className="text-gray-600">{displayAddr}</span>
+        <ChevronDown
+          className={`size-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-64 origin-top-right animate-in fade-in slide-in-from-top-2 duration-200 rounded-xl border border-gray-100 bg-white shadow-lg">
+          {/* Network badge */}
+          <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
+            <span className="inline-flex size-2 rounded-full bg-emerald-400" />
+            <span className="font-sans text-sm font-medium text-gray-700">
+              Stellar Testnet
+            </span>
+          </div>
+
+          {/* Balance section */}
+          <div className="border-b border-gray-100 px-4 py-4">
+            <p className="font-sans text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              Balance disponible
+            </p>
+            <p className="mt-1 font-display text-2xl font-bold tracking-tight text-gray-900">
+              ${formattedBalance}
+            </p>
+            <p className="font-mono text-xs text-gray-500">
+              ≈ {formattedBalance} USDC
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="p-1.5">
+            <button
+              onClick={handleCopyAddress}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left font-sans text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              <Copy className="size-4 text-gray-400" />
+              Copiar direccion
+            </button>
+
+            <button
+              onClick={handleOpenExplorer}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left font-sans text-sm text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              <ExternalLink className="size-4 text-gray-400" />
+              Ver en Explorer
+            </button>
+
+            <div className="my-1 border-t border-gray-100" />
+
+            <button
+              onClick={handleDisconnect}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left font-sans text-sm text-red-500 transition-colors hover:bg-red-50"
+            >
+              <Power className="size-4" />
+              Desconectar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

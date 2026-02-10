@@ -1,28 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
-import { toast } from 'sonner';
-import { Wallet, Loader2 } from 'lucide-react';
-import { useStore } from '@/lib/store';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-
-function shortenAddress(address: string): string {
-  if (address.length <= 14) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
+import WalletButton from '@/components/WalletButton';
 
 export default function Header() {
-  const { user, connectWallet, disconnectWallet } = useStore();
-  const { isConnected, walletAddress } = user;
-  const [isConnecting, setIsConnecting] = useState(false);
-
   return (
     <header className="fixed top-0 left-1/2 z-50 w-full max-w-120 -translate-x-1/2 border-b bg-white shadow-sm">
       <div className="flex items-center justify-between gap-2 px-4 py-3">
@@ -41,55 +22,7 @@ export default function Header() {
         </div>
 
         {/* Wallet */}
-        <div className="flex items-center">
-          {!isConnected ? (
-            <Button
-              disabled={isConnecting}
-              onClick={async () => {
-                setIsConnecting(true);
-                await new Promise((r) => setTimeout(r, 500));
-                connectWallet();
-                toast.success('Wallet connected successfully!');
-                setIsConnecting(false);
-              }}
-              className="bg-magenta hover:bg-magenta/90 text-white transition-all duration-200 disabled:opacity-70"
-            >
-              {isConnecting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Wallet className="size-4" />
-                  Connect Wallet
-                </>
-              )}
-            </Button>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="font-mono text-sm min-w-0 transition-all duration-200"
-                >
-                  {walletAddress ? shortenAddress(walletAddress) : '0x...'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-40">
-                <DropdownMenuItem
-                  onClick={() => {
-                    disconnectWallet();
-                    toast.info('Wallet disconnected');
-                  }}
-                  className="cursor-pointer"
-                >
-                  Disconnect
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+        <WalletButton />
       </div>
     </header>
   );
