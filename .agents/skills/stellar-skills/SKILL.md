@@ -73,9 +73,15 @@ await kit.openModal({
 # Build contract
 stellar contract build
 
-# Deploy to testnet
+# Upload wasm (preferred; returns wasm hash)
+stellar contract upload \
+  --wasm target/wasm32v1-none/release/my_contract.wasm \
+  --source alice \
+  --network testnet
+
+# Deploy using uploaded wasm hash
 stellar contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/my_contract.wasm \
+  --wasm-hash <WASM_HASH> \
   --source alice \
   --network testnet
 
@@ -85,6 +91,22 @@ stellar contract bindings typescript \
   --output-dir ./src/contracts/my-contract \
   --network testnet
 ```
+
+Notes:
+- `stellar contract install` is deprecated in recent CLI versions; use `stellar contract upload`.
+- Build output target/path can vary by project/toolchain. Use the path reported by `stellar contract build`.
+
+### Workflow 2b: Resolve Soroban Token Contract ID from Classic Asset
+
+```bash
+stellar contract id asset \
+  --network testnet \
+  --asset "USDC:G...ISSUER"
+```
+
+Notes:
+- `G...` issuer/account address is not the same as Soroban token contract ID.
+- Use the returned `C...` contract ID when interacting with Soroban token contracts.
 
 ### Workflow 3: Invoke Contract
 
@@ -133,6 +155,35 @@ if (sendResponse.status === 'PENDING') {
   }
 }
 ```
+
+### Workflow 5: Soroban CLI Argument Encoding and Debugging
+
+```bash
+# Example: i128/u128 fields in UDT JSON should be encoded as strings
+stellar contract invoke \
+  --network testnet \
+  --source alice \
+  --id CXXXXX... \
+  -- some_method \
+  --payload '{"amount":"10000000","memo":"0"}'
+
+# Example: Option<String> expects valid JSON value
+# Some("hello")
+--new_evidence '"hello"'
+# None
+--new_evidence null
+```
+
+Common CLI parsing rules:
+- For large integers in user-defined types, prefer JSON strings (for example `"10000000"`).
+- For optional/complex args, pass valid JSON literals (`null`, quoted JSON strings, arrays, objects).
+- For large objects, prefer file-based payloads instead of shell-escaped inline JSON.
+
+Debugging checklist:
+- Simulate first and inspect diagnostic events.
+- If you get `Error(Contract, #N)`, map `#N` to your contract error enum.
+- Confirm signer identity matches methods that call `require_auth()`.
+- Confirm token balances separately from trustline existence before transfer calls.
 
 ---
 
