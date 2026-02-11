@@ -16,3 +16,5 @@ contracts/escrow/test_snapshots/tests
 **/.DS_Store
 /.stellar
 /install_mainnet.json
+
+*test_snapshots/

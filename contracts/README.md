@@ -53,6 +53,8 @@ It enables trustless payments via smart contracts, securing funds in escrow unti
 - [Configuring the CLI for Testnet](#configuring-the-cli-for-testnet)
 - [Configure an idenity](#configure-an-identity)
 - [Deploy project on Testenet](#deploy-project-on-testnet)
+- [Contracts Overview](#contracts-overview)
+- [P2P Contract](#p2p-contract)
 
 ## Installing Rust
 
@@ -230,6 +232,70 @@ Notes:
 - You can override `ESCROW_WASM_HASH` and `ESCROW_CONTRACT_ID` directly from env.
 - `MILESTONES_JSON` is optional; if omitted, one default `Pending` milestone is generated.
 - The payload builder serializes Soroban `i128` fields (for example `amount`, `receiver_memo`) as strings for CLI compatibility.
+
+
+## Contracts Overview
+
+This workspace currently contains two Soroban contract crates under `contracts/contracts/`:
+
+- `escrow`: milestone-based Trustless Work escrow contract.
+- `p2p`: peer-to-peer order contract for fiat/crypto swaps.
+
+Build and test commands from the `contracts/` directory:
+
+```bash
+cargo build
+cargo test
+cargo test -p escrow
+cargo test -p p2p
+```
+
+
+## P2P Contract
+
+The `p2p` contract implements an order lifecycle inspired by the Solidity counterpart, with winner-based dispute resolution.
+
+### Main lifecycle
+
+`Created -> AwaitingFiller -> AwaitingPayment -> AwaitingConfirmation -> Completed`
+
+Additional terminal/branch states:
+
+- `Cancelled`
+- `Disputed`
+- `Refunded`
+
+### Entrypoints
+
+- `initialize`
+- `pause` / `unpause`
+- `create_order`
+- `cancel_order`
+- `take_order`
+- `submit_fiat_payment`
+- `execute_fiat_transfer_timeout`
+- `confirm_fiat_payment`
+- `dispute_fiat_payment`
+- `resolve_dispute` (winner-based boolean: `fiat_transfer_confirmed`)
+- `get_order`, `get_order_count`, `get_config`
+
+### Test coverage
+
+The `p2p` crate includes both happy-path and negative-path tests for:
+
+- auth and role checks
+- pause guards
+- input validation
+- timeout behavior
+- dispute and resolution branches
+
+Run only P2P tests:
+
+```bash
+cargo test -p p2p
+```
+
+Note: Makefile automation currently targets escrow flows. For P2P, use direct `cargo` and `stellar contract invoke` commands.
 
 
 
