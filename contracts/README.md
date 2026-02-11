@@ -53,6 +53,8 @@ It enables trustless payments via smart contracts, securing funds in escrow unti
 - [Configuring the CLI for Testnet](#configuring-the-cli-for-testnet)
 - [Configure an idenity](#configure-an-identity)
 - [Deploy project on Testenet](#deploy-project-on-testnet)
+- [Contracts Overview](#contracts-overview)
+- [P2P Contract](#p2p-contract)
 
 ## Installing Rust
 
@@ -156,6 +158,144 @@ You can use this [link](https://stellar.expert/explorer/testnet) to verify the i
 
 
 ## Deploy Project on Testnet
+
+
+## Quickstart via Makefile (2-step deploy + init)
+
+This repository includes a Makefile under `contracts/` to run a simple flow:
+
+1) Deploy a new escrow contract instance.
+2) Initialize it with `initialize_escrow`.
+
+### Available targets
+
+```bash
+make help
+make contract-build
+make contract-install-escrow NETWORK=testnet SOURCE=alice
+make escrow-deploy NETWORK=testnet SOURCE=alice
+make escrow-build-payload NETWORK=testnet ...
+make escrow-init NETWORK=testnet SOURCE=alice
+make escrow-get NETWORK=testnet SOURCE=alice
+make run-simple-escrow-flow
+```
+
+### One-command happy path (deploy -> init -> fund -> complete -> approve -> release)
+
+If you already have the key aliases `admin`, `contractor`, and `freelancer` configured in Stellar CLI:
+
+```bash
+make run-simple-escrow-flow
+```
+
+Defaults used by the script:
+- `NETWORK=testnet`
+- `TOKEN_CONTRACT_ID=CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
+- `ADMIN_ALIAS=admin`
+- `CONTRACTOR_ALIAS=contractor`
+- `FREELANCER_ALIAS=freelancer`
+
+You can override any of these:
+
+```bash
+NETWORK=testnet TOKEN_CONTRACT_ID=C... make run-simple-escrow-flow
+```
+
+### Minimal example
+
+```bash
+make contract-build
+make contract-install-escrow NETWORK=testnet SOURCE=alice
+make escrow-deploy NETWORK=testnet SOURCE=alice
+
+make escrow-build-payload \
+  NETWORK=testnet \
+  ENGAGEMENT_ID=order_001 \
+  TITLE="P2P Trade #001" \
+  DESCRIPTION="USDC/ARS escrow" \
+  AMOUNT=100000000 \
+  PLATFORM_FEE_BPS=100 \
+  TOKEN_CONTRACT_ID=CB...TOKEN \
+  APPROVER=G...APPROVER \
+  SERVICE_PROVIDER=G...SERVICE \
+  PLATFORM_ADDRESS=G...PLATFORM \
+  RELEASE_SIGNER=G...RELEASE \
+  DISPUTE_RESOLVER=G...DISPUTE \
+  RECEIVER=G...RECEIVER
+
+make escrow-init NETWORK=testnet SOURCE=alice
+make escrow-get NETWORK=testnet SOURCE=alice
+```
+
+Notes:
+- Generated deployment artifacts are stored in `.artifacts/<network>/`.
+- You can override `ESCROW_WASM_HASH` and `ESCROW_CONTRACT_ID` directly from env.
+- `MILESTONES_JSON` is optional; if omitted, one default `Pending` milestone is generated.
+- The payload builder serializes Soroban `i128` fields (for example `amount`, `receiver_memo`) as strings for CLI compatibility.
+
+
+## Contracts Overview
+
+This workspace currently contains two Soroban contract crates under `contracts/contracts/`:
+
+- `escrow`: milestone-based Trustless Work escrow contract.
+- `p2p`: peer-to-peer order contract for fiat/crypto swaps.
+
+Build and test commands from the `contracts/` directory:
+
+```bash
+cargo build
+cargo test
+cargo test -p escrow
+cargo test -p p2p
+```
+
+
+## P2P Contract
+
+The `p2p` contract implements an order lifecycle inspired by the Solidity counterpart, with winner-based dispute resolution.
+
+### Main lifecycle
+
+`Created -> AwaitingFiller -> AwaitingPayment -> AwaitingConfirmation -> Completed`
+
+Additional terminal/branch states:
+
+- `Cancelled`
+- `Disputed`
+- `Refunded`
+
+### Entrypoints
+
+- `initialize`
+- `pause` / `unpause`
+- `create_order`
+- `cancel_order`
+- `take_order`
+- `submit_fiat_payment`
+- `execute_fiat_transfer_timeout`
+- `confirm_fiat_payment`
+- `dispute_fiat_payment`
+- `resolve_dispute` (winner-based boolean: `fiat_transfer_confirmed`)
+- `get_order`, `get_order_count`, `get_config`
+
+### Test coverage
+
+The `p2p` crate includes both happy-path and negative-path tests for:
+
+- auth and role checks
+- pause guards
+- input validation
+- timeout behavior
+- dispute and resolution branches
+
+Run only P2P tests:
+
+```bash
+cargo test -p p2p
+```
+
+Note: Makefile automation currently targets escrow flows. For P2P, use direct `cargo` and `stellar contract invoke` commands.
 
 
 

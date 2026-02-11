@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useAuth, useWallet } from '@crossmint/client-sdk-react-ui';
 import { toast } from 'sonner';
 import { Wallet, Loader2, Copy, ExternalLink, Power, ChevronDown } from 'lucide-react';
 import { useStore } from '@/lib/store';
-
-const FULL_ADDRESS = 'GA29EBXKQMQHAECBR7NSMAQM6GHG3YPEESMUFEA';
 
 function shortenAddress(address: string): string {
   if (address.length <= 12) return address;
@@ -13,12 +12,31 @@ function shortenAddress(address: string): string {
 }
 
 export default function WalletButton() {
-  const { user, connectWallet, disconnectWallet } = useStore();
+  const { user, connectWallet, disconnectWallet, setWalletStatus } = useStore();
+  const { login, logout, status } = useAuth();
+  const { wallet } = useWallet();
   const { isConnected, walletAddress, balance } = user;
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const activeWalletAddress = walletAddress ?? wallet?.address ?? null;
+
+  useEffect(() => {
+    setWalletStatus(status ?? null);
+  }, [setWalletStatus, status]);
+
+  useEffect(() => {
+    if (wallet?.address) {
+      connectWallet(wallet.address, wallet.owner ?? null, status ?? 'logged-in');
+      return;
+    }
+
+    if (status === 'logged-out') {
+      disconnectWallet();
+    }
+  }, [connectWallet, disconnectWallet, status, wallet?.address, wallet?.owner]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -46,28 +64,47 @@ export default function WalletButton() {
 
   const handleConnect = async () => {
     setIsConnecting(true);
-    // Mock Freighter connection delay
-    await new Promise((r) => setTimeout(r, 800));
-    connectWallet();
-    toast.success('Wallet conectada exitosamente');
-    setIsConnecting(false);
+
+    try {
+      await login();
+      toast.success('Crossmint login iniciado');
+    } catch {
+      toast.error('No se pudo iniciar el login');
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
-  const handleDisconnect = () => {
-    disconnectWallet();
-    setIsOpen(false);
-    toast.info('Wallet desconectada');
+  const handleDisconnect = async () => {
+    try {
+      await logout();
+      disconnectWallet();
+      setIsOpen(false);
+      toast.info('Wallet desconectada');
+    } catch {
+      toast.error('No se pudo cerrar la sesion');
+    }
   };
 
   const handleCopyAddress = async () => {
-    await navigator.clipboard.writeText(FULL_ADDRESS);
+    if (!activeWalletAddress) {
+      toast.error('No wallet address available');
+      return;
+    }
+
+    await navigator.clipboard.writeText(activeWalletAddress);
     toast.success('Direccion copiada');
     setIsOpen(false);
   };
 
   const handleOpenExplorer = () => {
+    if (!activeWalletAddress) {
+      toast.error('No wallet address available');
+      return;
+    }
+
     window.open(
-      `https://stellar.expert/explorer/testnet/account/${FULL_ADDRESS}`,
+      `https://stellar.expert/explorer/testnet/account/${activeWalletAddress}`,
       '_blank'
     );
     setIsOpen(false);
@@ -80,13 +117,15 @@ export default function WalletButton() {
 
   // --- Disconnected ---
   if (!isConnected) {
+    const isAuthLoading = status === 'initializing' || isConnecting;
+
     return (
       <button
-        disabled={isConnecting}
+        disabled={isAuthLoading}
         onClick={handleConnect}
         className="flex items-center gap-2 rounded-lg bg-magenta px-4 py-2 font-sans text-sm font-semibold text-white transition-all duration-200 hover:bg-magenta-600 active:scale-[0.97] disabled:opacity-70"
       >
-        {isConnecting ? (
+        {isAuthLoading ? (
           <>
             <Loader2 className="size-4 animate-spin" />
             <span>Conectando...</span>
@@ -102,7 +141,7 @@ export default function WalletButton() {
   }
 
   // --- Connected ---
-  const displayAddr = walletAddress ? shortenAddress(walletAddress) : '0x...';
+  const displayAddr = activeWalletAddress ? shortenAddress(activeWalletAddress) : '0x...';
 
   return (
     <div ref={dropdownRef} className="relative">

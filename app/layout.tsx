@@ -3,9 +3,7 @@ import { DM_Sans, Space_Grotesk } from "next/font/google";
 import LayoutShell from "@/components/LayoutShell";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
-import { UserProvider } from "@/contexts/UserContext";
-import { BalanceProvider } from "@/contexts/BalanceContext";
-import { TradeHistoryProvider } from "@/contexts/TradeHistoryContext";
+import { Providers } from "./providers";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -32,14 +30,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans`}>
-        <UserProvider>
-          <BalanceProvider>
-            <TradeHistoryProvider>
-              <LayoutShell>{children}</LayoutShell>
-              <Toaster />
-            </TradeHistoryProvider>
-          </BalanceProvider>
-        </UserProvider>
+        <Providers>
+          <LayoutShell>{children}</LayoutShell>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

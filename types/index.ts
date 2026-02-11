@@ -5,6 +5,8 @@ export type Currency = 'ARS' | 'USD';
 
 export interface User {
   walletAddress: string | null;
+  walletOwner?: string | null;
+  walletStatus?: string | null;
   isConnected: boolean;
   balance: {
     usd: number;

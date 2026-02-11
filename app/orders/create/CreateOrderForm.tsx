@@ -88,9 +88,10 @@ function NumberField({
 
 export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
   const router = useRouter();
-  const { createOrder } = useStore();
+  const { user, createOrder } = useStore();
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [isLoading, setIsLoading] = useState(false);
+  const isWalletReady = user.isConnected && Boolean(user.walletAddress);
 
   const update = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -98,6 +99,11 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
+
+    if (!isWalletReady) {
+      toast.error('Connect your wallet before creating an order.');
+      return;
+    }
 
     const { amount, rate, currency, paymentMethod, duration } = formData;
     if (amount <= 0) {
@@ -243,7 +249,7 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
       <Button
         type="button"
         onClick={handleSubmit}
-        disabled={isLoading}
+        disabled={isLoading || !isWalletReady}
         className="mt-6 w-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 py-4 text-body font-bold text-white hover:opacity-90 transition-all duration-200 disabled:opacity-70"
       >
         {isLoading ? (
@@ -252,7 +258,9 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
             Creating...
           </>
         ) : (
-          `Create ${orderType === 'sell' ? 'Sell' : 'Buy'} Order`
+          isWalletReady
+            ? `Create ${orderType === 'sell' ? 'Sell' : 'Buy'} Order`
+            : 'Connect wallet to continue'
         )}
       </Button>
     </form>
