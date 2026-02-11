@@ -1,35 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUser } from '@/contexts/UserContext';
-
 export default function ProDashboardPage() {
-  const router = useRouter();
-  const { user, loading } = useUser();
-
-  // Debug logs
-  console.log('ProDashboard - loading:', loading);
-  console.log('ProDashboard - user:', user);
-  console.log('ProDashboard - user?.role:', user?.role);
-
-  // Protección: solo market makers (usando useEffect para evitar el redirect durante render)
-  useEffect(() => {
-    if (!loading && (!user || user.role !== 'MARKET_MAKER')) {
-      console.log('ProDashboard - Redirecting to / because not MM');
-      router.push('/');
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return <div className="flex items-center justify-center py-20">Cargando...</div>;
-  }
-
-  // Si no hay usuario o no es MM, mostrar loading mientras redirige
-  if (!user || user.role !== 'MARKET_MAKER') {
-    return <div className="flex items-center justify-center py-20">Redirigiendo...</div>;
-  }
-
   return (
     <>
       {/* Header */}

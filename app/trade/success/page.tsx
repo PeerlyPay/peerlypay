@@ -10,6 +10,8 @@ import {
   Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBalance } from '@/contexts/BalanceContext';
+import { useTradeHistory } from '@/contexts/TradeHistoryContext';
 
 // Mock trade data
 const MOCK_MAKER = 'crypto_trader_ar';
@@ -127,6 +129,8 @@ function StarRating({
 function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { subtractBalance } = useBalance();
+  const { addTrade } = useTradeHistory();
 
   const amount = parseFloat(searchParams.get('amount') || '0.11');
   const fiatAmount = amount * MOCK_RATE;
@@ -148,6 +152,25 @@ function SuccessContent() {
       minute: '2-digit',
       hour12: true,
     });
+  }, []);
+
+  // Deduct balance and save trade on mount
+  useEffect(() => {
+    const processed = sessionStorage.getItem(`trade_processed_${amount}`);
+    if (processed) return;
+
+    subtractBalance(amount);
+    addTrade({
+      amount,
+      arsReceived: totalPaid,
+      rate: MOCK_RATE,
+      marketMaker: MOCK_MAKER,
+      paymentMethod: 'MercadoPago',
+      txnId: MOCK_TXN_ID,
+    });
+
+    sessionStorage.setItem(`trade_processed_${amount}`, 'true');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Trigger mount animation

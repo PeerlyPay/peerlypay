@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowDownUp,
   Delete,
   Loader2,
   Shield,
@@ -11,11 +10,13 @@ import {
   ArrowLeft,
   HelpCircle,
   ChevronRight,
+  TrendingDown,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import { estimateQuickTrade } from '@/lib/match-order';
-import type { OrderType, QuickTradeEstimate } from '@/types';
+import type { QuickTradeEstimate } from '@/types';
 
 /** Transaction limit in USDC */
 const USDC_LIMIT = 500;
@@ -23,12 +24,7 @@ const USDC_LIMIT = 500;
 /** Debounce delay for rate calculation (ms) */
 const DEBOUNCE_MS = 500;
 
-/**
- * Input mode determines which currency the user is typing in.
- * - 'fiat': user types ARS, we calculate USDC (Comprar USDC flow)
- * - 'usdc': user types USDC, we calculate ARS (Vender USDC flow)
- */
-type InputMode = 'fiat' | 'usdc';
+type TradeMode = 'sell' | 'buy';
 
 function formatFiatCompact(value: number): string {
   return value.toLocaleString('es-AR', {
@@ -89,12 +85,54 @@ function Numpad({ onKey, disabled }: NumpadProps) {
 }
 
 // ============================================
+// SEGMENTED TOGGLE
+// ============================================
+interface SegmentedToggleProps {
+  mode: TradeMode;
+  onChange: (mode: TradeMode) => void;
+}
+
+function SegmentedToggle({ mode, onChange }: SegmentedToggleProps) {
+  return (
+    <div className="relative flex bg-gray-100 rounded-xl p-1 w-[200px]">
+      {/* Sliding background */}
+      <div
+        className={cn(
+          'absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-fuchsia-500 shadow-sm transition-transform duration-300 ease-out',
+          mode === 'buy' && 'translate-x-[calc(100%+4px)]'
+        )}
+      />
+      <button
+        type="button"
+        onClick={() => onChange('sell')}
+        className={cn(
+          'relative z-10 flex-1 py-2 text-sm font-semibold font-[family-name:var(--font-space-grotesk)] rounded-lg transition-colors duration-200',
+          mode === 'sell' ? 'text-white' : 'text-gray-500'
+        )}
+      >
+        Vender
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('buy')}
+        className={cn(
+          'relative z-10 flex-1 py-2 text-sm font-semibold font-[family-name:var(--font-space-grotesk)] rounded-lg transition-colors duration-200',
+          mode === 'buy' ? 'text-white' : 'text-gray-500'
+        )}
+      >
+        Comprar
+      </button>
+    </div>
+  );
+}
+
+// ============================================
 // MAIN QUICK TRADE COMPONENT
 // ============================================
 export default function QuickTradeInput() {
   const router = useRouter();
   const { user, orders } = useStore();
-  const [inputMode, setInputMode] = useState<InputMode>('fiat');
+  const [mode, setMode] = useState<TradeMode>('sell');
   const [inputValue, setInputValue] = useState('');
   const [estimate, setEstimate] = useState<QuickTradeEstimate | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -102,19 +140,18 @@ export default function QuickTradeInput() {
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   const numericValue = parseFloat(inputValue) || 0;
-
-  // Derive trade type from input mode
-  const tradeType: OrderType = inputMode === 'fiat' ? 'buy' : 'sell';
-
-  // Calculate USDC amount
-  const usdcAmount = inputMode === 'usdc'
-    ? numericValue
-    : (estimate ? numericValue / estimate.rate : 0);
-
-  const isOverLimit = usdcAmount > USDC_LIMIT;
+  const isOverLimit = numericValue > USDC_LIMIT;
   const hasValidAmount = numericValue > 0 && !isOverLimit;
 
-  // Debounced estimate calculation
+  // Reset when mode changes
+  const handleModeChange = useCallback((newMode: TradeMode) => {
+    setMode(newMode);
+    setInputValue('');
+    setEstimate(null);
+    setError(null);
+  }, []);
+
+  // Debounced estimate calculation — always input USDC
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setError(null);
@@ -128,31 +165,13 @@ export default function QuickTradeInput() {
     setIsCalculating(true);
 
     debounceRef.current = setTimeout(() => {
-      if (inputMode === 'usdc') {
-        const result = estimateQuickTrade(orders, numericValue, 'sell');
-        if (result) {
-          setEstimate(result);
-          setError(null);
-        } else {
-          setEstimate(null);
-          setError('No hay órdenes disponibles para este monto');
-        }
+      const result = estimateQuickTrade(orders, numericValue, mode);
+      if (result) {
+        setEstimate(result);
+        setError(null);
       } else {
-        const rateProbe = estimateQuickTrade(orders, 1, 'buy');
-        if (rateProbe) {
-          const impliedUsdc = numericValue / rateProbe.rate;
-          const fullEstimate = estimateQuickTrade(orders, impliedUsdc, 'buy');
-          if (fullEstimate) {
-            setEstimate(fullEstimate);
-            setError(null);
-          } else {
-            setEstimate(null);
-            setError('No hay órdenes disponibles para este monto');
-          }
-        } else {
-          setEstimate(null);
-          setError('No hay órdenes disponibles');
-        }
+        setEstimate(null);
+        setError('No hay órdenes disponibles para este monto');
       }
       setIsCalculating(false);
     }, DEBOUNCE_MS);
@@ -160,7 +179,7 @@ export default function QuickTradeInput() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [numericValue, inputMode, orders]);
+  }, [numericValue, mode, orders]);
 
   // Handle numpad key press
   const handleKey = useCallback((key: string) => {
@@ -179,27 +198,15 @@ export default function QuickTradeInput() {
     });
   }, []);
 
-  // Swap input mode
-  const handleSwap = useCallback(() => {
-    setInputMode((prev) => (prev === 'fiat' ? 'usdc' : 'fiat'));
-    setInputValue('');
-    setEstimate(null);
-    setError(null);
-  }, []);
-
   // Set max amount
   const handleMax = useCallback(() => {
-    if (inputMode === 'usdc') {
+    if (mode === 'sell') {
       const maxUsdc = Math.min(user.balance.usdc, USDC_LIMIT);
       setInputValue(maxUsdc > 0 ? String(maxUsdc) : String(USDC_LIMIT));
     } else {
-      const rateProbe = estimateQuickTrade(orders, 1, 'buy');
-      if (rateProbe) {
-        const maxArs = Math.floor(USDC_LIMIT * rateProbe.rate);
-        setInputValue(String(maxArs));
-      }
+      setInputValue(String(USDC_LIMIT));
     }
-  }, [inputMode, user.balance.usdc, orders]);
+  }, [mode, user.balance.usdc]);
 
   // Clear input
   const handleClear = useCallback(() => {
@@ -210,30 +217,20 @@ export default function QuickTradeInput() {
 
   // Navigate to confirmation page
   const handleContinue = useCallback(() => {
-    if (!hasValidAmount) return;
-
-    const amount = inputMode === 'usdc'
-      ? numericValue
-      : (estimate ? numericValue / estimate.rate : 0);
-
-    if (amount <= 0) return;
-
-    router.push(`/trade/confirm?amount=${amount.toFixed(2)}&type=${tradeType}`);
-  }, [hasValidAmount, numericValue, inputMode, tradeType, estimate, router]);
+    if (!hasValidAmount || !estimate) return;
+    router.push(`/trade/confirm?amount=${numericValue.toFixed(2)}&mode=${mode}`);
+  }, [hasValidAmount, numericValue, mode, estimate, router]);
 
   // ============================================
   // DERIVED DISPLAY VALUES
   // ============================================
   const displayPrimary = inputValue || '0';
 
-  let displaySecondary = '0.00';
-  if (estimate && !isCalculating) {
-    if (inputMode === 'fiat') {
-      displaySecondary = formatUsdc(numericValue / estimate.rate);
-    } else {
-      displaySecondary = formatFiatCompact(estimate.total);
-    }
-  }
+  const displaySecondary = estimate && !isCalculating
+    ? formatFiatCompact(estimate.total)
+    : '0';
+
+  const isSell = mode === 'sell';
 
   // ============================================
   // FULLSCREEN LIGHT UI
@@ -241,7 +238,7 @@ export default function QuickTradeInput() {
   return (
     <div className="fixed inset-0 z-50 flex flex-col h-dvh bg-white">
       {/* ============================================
-          TOP BAR: back + mode label + help
+          TOP BAR: back + toggle + help
           ============================================ */}
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <button
@@ -252,9 +249,7 @@ export default function QuickTradeInput() {
           <ArrowLeft className="size-5 text-gray-600" />
         </button>
 
-        <span className="font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-gray-500 uppercase tracking-wider">
-          {inputMode === 'fiat' ? 'Comprar USDC' : 'Vender USDC'}
-        </span>
+        <SegmentedToggle mode={mode} onChange={handleModeChange} />
 
         <button
           type="button"
@@ -265,16 +260,23 @@ export default function QuickTradeInput() {
       </div>
 
       {/* ============================================
-          AMOUNT DISPLAY AREA (upper portion)
+          TITLE / SUBTITLE
+          ============================================ */}
+      <div className="text-center px-6 pt-3 pb-1">
+        <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-gray-900">
+          {isSell ? '¿Cuánto USDC querés vender?' : '¿Cuánto USDC querés comprar?'}
+        </h2>
+        <p className="text-sm text-gray-500 mt-0.5">
+          {isSell ? 'Recibirás ARS al instante' : 'Pagarás con ARS'}
+        </p>
+      </div>
+
+      {/* ============================================
+          AMOUNT DISPLAY AREA
           ============================================ */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-1 min-h-0">
-        {/* Primary amount */}
+        {/* Primary USDC amount */}
         <div className="flex items-baseline gap-2">
-          {inputMode === 'fiat' && (
-            <span className="font-[family-name:var(--font-space-grotesk)] text-3xl font-bold text-gray-300">
-              $
-            </span>
-          )}
           <span
             className={cn(
               'font-[family-name:var(--font-jetbrains-mono)] font-bold tracking-tight tabular-nums text-gray-900 transition-all',
@@ -287,42 +289,39 @@ export default function QuickTradeInput() {
           >
             {displayPrimary}
           </span>
-          {inputMode === 'usdc' && (
-            <span className="font-[family-name:var(--font-space-grotesk)] text-xl font-semibold text-gray-300 self-end mb-1.5">
-              USDC
-            </span>
-          )}
+          <span className="font-[family-name:var(--font-space-grotesk)] text-xl font-semibold text-gray-300 self-end mb-1.5">
+            USDC
+          </span>
         </div>
 
-        {/* Swap button */}
-        <button
-          type="button"
-          onClick={handleSwap}
-          className="my-3 flex items-center justify-center size-10 rounded-full bg-gray-100 border border-gray-200 hover:bg-gray-200 active:scale-95 transition-all"
-          aria-label="Cambiar moneda"
-        >
-          <ArrowDownUp className="size-[18px] text-gray-500" strokeWidth={2.5} />
-        </button>
-
-        {/* Secondary amount */}
-        <div className="flex items-center gap-1.5 h-8">
+        {/* Secondary ARS amount */}
+        <div className="flex items-center gap-1.5 h-8 mt-2">
           {isCalculating && numericValue > 0 ? (
             <div className="flex items-center gap-2 text-gray-400">
               <Loader2 className="size-4 animate-spin" />
               <span className="text-body-sm">Calculando...</span>
             </div>
           ) : (
-            <>
-              <span className="font-[family-name:var(--font-space-grotesk)] text-lg font-medium text-gray-400">
-                {inputMode === 'fiat' ? '≈' : '≈ $'}
+            <div className="flex items-center gap-2">
+              {isSell ? (
+                <TrendingDown className={cn('size-4', numericValue > 0 && estimate ? 'text-emerald-500' : 'text-gray-300')} />
+              ) : (
+                <TrendingUp className={cn('size-4', numericValue > 0 && estimate ? 'text-blue-500' : 'text-gray-300')} />
+              )}
+              <span
+                className={cn(
+                  'font-[family-name:var(--font-jetbrains-mono)] text-lg font-semibold tabular-nums',
+                  numericValue > 0 && estimate
+                    ? isSell ? 'text-emerald-600' : 'text-blue-600'
+                    : 'text-gray-400'
+                )}
+              >
+                ≈ ${displaySecondary} ARS
               </span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-semibold text-gray-500 tabular-nums">
-                {displaySecondary}
+              <span className="font-[family-name:var(--font-space-grotesk)] text-xs font-medium text-gray-400">
+                {isSell ? 'recibirás' : 'pagarás'}
               </span>
-              <span className="font-[family-name:var(--font-space-grotesk)] text-sm font-medium text-gray-300">
-                {inputMode === 'fiat' ? 'USDC' : 'ARS'}
-              </span>
-            </>
+            </div>
           )}
         </div>
 

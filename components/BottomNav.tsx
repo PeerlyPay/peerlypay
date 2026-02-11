@@ -2,32 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileText, User, LayoutDashboard, Activity, Zap } from 'lucide-react';
-import { useUser } from '@/contexts/UserContext';
+import { Home, FileText, User, Zap } from 'lucide-react';
+
+const tabs = [
+  { href: '/quick-trade', icon: Home, label: 'Home' },
+  { href: '/trade', icon: Zap, label: 'Trade' },
+  { href: '/orders', icon: FileText, label: 'Orders' },
+  { href: '/profile', icon: User, label: 'Profile' },
+];
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { user, isFreelancer, isMarketMaker, loading } = useUser();
-
-  // No mostrar si está cargando o no hay usuario
-  if (loading || !user) return null;
-
-  const freelancerTabs = [
-    { href: '/quick-trade', icon: Home, label: 'Home' },
-    { href: '/trade', icon: Zap, label: 'Trade' },
-    { href: '/orders', icon: FileText, label: 'Orders' },
-    { href: '/profile', icon: User, label: 'Profile' },
-  ];
-
-  const marketMakerTabs = [
-    { href: '/pro', icon: LayoutDashboard, label: 'Dashboard' },
-    { href: '/monitor', icon: Activity, label: 'Monitor' },
-    { href: '/orders', icon: FileText, label: 'Trades' },
-    { href: '/profile', icon: User, label: 'Profile' },
-  ];
-
-  // CRITICAL: usar la condición correcta
-  const tabs = isFreelancer ? freelancerTabs : marketMakerTabs;
 
   return (
     <nav

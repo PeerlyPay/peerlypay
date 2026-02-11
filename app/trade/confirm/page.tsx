@@ -12,8 +12,10 @@ import {
   Banknote,
   Smartphone,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBalance } from '@/contexts/BalanceContext';
 
 /**
  * Mock: check if user wallet has USDC trustline.
@@ -65,13 +67,17 @@ function ConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isChecking, setIsChecking] = useState(false);
+  const { usdc: balance } = useBalance();
 
   const amount = parseFloat(searchParams.get('amount') || '100');
+  const mode = (searchParams.get('mode') || 'sell') as 'sell' | 'buy';
+  const isSell = mode === 'sell';
+  const insufficientBalance = isSell && balance < amount;
   const rate = MOCK_RATE;
   const fiatAmount = amount * rate;
   const feeUsdc = amount * FEE_RATE;
   const feeArs = feeUsdc * rate;
-  const totalAfterFee = fiatAmount - feeArs;
+  const totalAfterFee = isSell ? fiatAmount - feeArs : fiatAmount + feeArs;
 
   const handleConfirm = useCallback(async () => {
     setIsChecking(true);
@@ -79,11 +85,11 @@ function ConfirmContent() {
     setIsChecking(false);
 
     if (hasTrustline) {
-      router.push(`/trade/payment?amount=${amount}`);
+      router.push(`/trade/payment?amount=${amount}&mode=${mode}`);
     } else {
-      router.push(`/trade/enable-usdc?amount=${amount}`);
+      router.push(`/trade/enable-usdc?amount=${amount}&mode=${mode}`);
     }
-  }, [router, amount]);
+  }, [router, amount, mode]);
 
   return (
     <div className="flex flex-col min-h-[calc(100dvh-64px)] bg-white">
@@ -97,7 +103,7 @@ function ConfirmContent() {
           <ArrowLeft className="size-5 text-gray-900" />
         </button>
         <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-gray-900">
-          Confirmar Trade
+          {isSell ? 'Confirmar Venta' : 'Confirmar Compra'}
         </h2>
       </div>
 
@@ -111,8 +117,11 @@ function ConfirmContent() {
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-body-sm text-gray-500">Recibirás</span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-semibold text-gray-900 tabular-nums">
+            <span className="text-body-sm text-gray-500">{isSell ? 'Recibirás' : 'Pagarás'}</span>
+            <span className={cn(
+              'font-[family-name:var(--font-jetbrains-mono)] text-base font-semibold tabular-nums',
+              isSell ? 'text-emerald-600' : 'text-blue-600'
+            )}>
               ~{formatFiatCompact(fiatAmount)} ARS
             </span>
           </div>
@@ -129,8 +138,13 @@ function ConfirmContent() {
             </span>
           </div>
           <div className="border-t border-gray-200 pt-3 flex items-center justify-between">
-            <span className="text-body font-bold text-gray-900">Total después de comisión</span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-xl font-bold text-gray-900 tabular-nums">
+            <span className="text-body font-bold text-gray-900">
+              {isSell ? 'Total a recibir' : 'Total a pagar'}
+            </span>
+            <span className={cn(
+              'font-[family-name:var(--font-jetbrains-mono)] text-xl font-bold tabular-nums',
+              isSell ? 'text-emerald-600' : 'text-blue-600'
+            )}>
               {formatFiat(totalAfterFee)} ARS
             </span>
           </div>
@@ -197,20 +211,43 @@ function ConfirmContent() {
           </div>
         </div>
 
-        {/* Important Info Box */}
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
-          <div className="flex items-start gap-2.5">
-            <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-            <div className="space-y-1.5">
-              <p className="text-body-sm font-medium text-amber-800">
-                Tu USDC irá a escrow hasta que el vendedor confirme el pago
-              </p>
-              <p className="text-body-sm text-amber-700">
-                Solo transfiere a la cuenta indicada
-              </p>
+        {/* Insufficient Balance Warning */}
+        {insufficientBalance && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="size-5 text-red-500 shrink-0 mt-0.5" />
+              <div className="space-y-1.5">
+                <p className="text-body-sm font-medium text-red-800">
+                  Saldo insuficiente
+                </p>
+                <p className="text-body-sm text-red-700">
+                  Necesitas {formatUsdc(amount)} USDC pero solo tienes {formatUsdc(balance)} USDC.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Important Info Box */}
+        {!insufficientBalance && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="space-y-1.5">
+                <p className="text-body-sm font-medium text-amber-800">
+                  {isSell
+                    ? 'Tu USDC irá a escrow hasta que el comprador confirme el pago'
+                    : 'Tu ARS irá a escrow hasta que el vendedor libere los USDC'}
+                </p>
+                <p className="text-body-sm text-amber-700">
+                  {isSell
+                    ? 'Solo transfiere a la cuenta indicada'
+                    : 'Solo paga al método indicado'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 
@@ -219,21 +256,25 @@ function ConfirmContent() {
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={isChecking}
+          disabled={isChecking || insufficientBalance}
           className={cn(
             'w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white transition-all active:scale-[0.98]',
-            isChecking
-              ? 'bg-fuchsia-400 cursor-wait'
-              : 'bg-gradient-to-r from-fuchsia-500 to-purple-600 shadow-lg shadow-fuchsia-500/25 hover:opacity-90'
+            insufficientBalance
+              ? 'bg-gray-300 cursor-not-allowed'
+              : isChecking
+                ? 'bg-fuchsia-400 cursor-wait'
+                : 'bg-gradient-to-r from-fuchsia-500 to-purple-600 shadow-lg shadow-fuchsia-500/25 hover:opacity-90'
           )}
         >
-          {isChecking ? (
+          {insufficientBalance ? (
+            'Saldo insuficiente'
+          ) : isChecking ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="size-5 animate-spin" />
               Verificando wallet...
             </span>
           ) : (
-            'Confirmar Trade'
+            isSell ? 'Confirmar Venta' : 'Confirmar Compra'
           )}
         </button>
         <button

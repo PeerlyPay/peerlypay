@@ -1,10 +1,9 @@
 'use client';
 
-import { useStore } from '@/lib/store';
+import { useBalance } from '@/contexts/BalanceContext';
 
 export default function BalanceCard() {
-  const { user } = useStore();
-  const { usd, usdc } = user.balance;
+  const { usd, usdc, loading } = useBalance();
 
   const formattedUsd = usd.toLocaleString('en-US', {
     minimumFractionDigits: 2,
@@ -28,11 +27,11 @@ export default function BalanceCard() {
               $
             </span>
             <span className="font-display text-[60px] font-semibold tracking-[-3px]">
-              {formattedUsd}
+              {loading ? '—' : formattedUsd}
             </span>
           </div>
           <p className="font-mono text-base leading-[1.5] text-[#585d69]">
-            ≈ {formattedUsdc} USDC
+            ≈ {loading ? '—' : formattedUsdc} USDC
           </p>
         </div>
       </div>

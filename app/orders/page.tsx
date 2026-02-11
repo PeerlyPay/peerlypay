@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Package,
   ArrowDownRight,
   Clock,
   CheckCircle2,
@@ -16,10 +15,7 @@ import {
   Flag,
   RefreshCw,
 } from 'lucide-react';
-import { useUser } from '@/contexts/UserContext';
-import { useStore } from '@/lib/store';
-import OrderCard from '@/components/OrderCard';
-import OrderCardSkeleton from '@/components/OrderCardSkeleton';
+import { useTradeHistory, CompletedTrade } from '@/contexts/TradeHistoryContext';
 import EmptyState from '@/components/EmptyState';
 import FadeIn from '@/components/FadeIn';
 import { cn } from '@/lib/utils';
@@ -529,11 +525,43 @@ function TradeDetailSheet({
 }
 
 // ============================================
+// HELPERS: convert real trades to display format
+// ============================================
+
+function realTradeToFreelancer(trade: CompletedTrade): FreelancerTrade {
+  const date = new Date(trade.date);
+  const timeStr = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return {
+    id: trade.id,
+    status: 'completed',
+    usdcAmount: trade.amount,
+    arsAmount: trade.arsReceived,
+    rate: trade.rate,
+    counterparty: { username: trade.marketMaker, reputation: 4.8 },
+    createdAt: trade.date,
+    completedAt: trade.date,
+    txnId: trade.txnId,
+    paymentMethod: trade.paymentMethod,
+    timeline: [
+      { label: 'Trade iniciado', time: timeStr, done: true },
+      { label: 'Pago enviado', time: timeStr, done: true },
+      { label: 'USDC liberado', time: timeStr, done: true },
+      { label: 'USDC recibido', time: timeStr, done: true },
+    ],
+  };
+}
+
+// ============================================
 // FREELANCER TRADES VIEW
 // ============================================
 
 function FreelancerTradesView() {
   const router = useRouter();
+  const { trades: realTrades } = useTradeHistory();
   const [activeTab, setActiveTab] = useState<TradeStatus>('active');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -546,18 +574,26 @@ function FreelancerTradesView() {
     return () => clearTimeout(timer);
   }, []);
 
+  const allTrades = useMemo(() => {
+    const converted = realTrades.map(realTradeToFreelancer);
+    // Merge: real trades first, then mock trades (deduped by id)
+    const realIds = new Set(converted.map((t) => t.id));
+    const mockOnly = MOCK_TRADES.filter((t) => !realIds.has(t.id));
+    return [...converted, ...mockOnly];
+  }, [realTrades]);
+
   const filteredTrades = useMemo(
-    () => MOCK_TRADES.filter((t) => t.status === activeTab),
-    [activeTab]
+    () => allTrades.filter((t) => t.status === activeTab),
+    [activeTab, allTrades]
   );
 
   const counts = useMemo(
     () => ({
-      active: MOCK_TRADES.filter((t) => t.status === 'active').length,
-      completed: MOCK_TRADES.filter((t) => t.status === 'completed').length,
-      disputed: MOCK_TRADES.filter((t) => t.status === 'disputed').length,
+      active: allTrades.filter((t) => t.status === 'active').length,
+      completed: allTrades.filter((t) => t.status === 'completed').length,
+      disputed: allTrades.filter((t) => t.status === 'disputed').length,
     }),
-    []
+    [allTrades]
   );
 
   const handleRefresh = () => {
@@ -699,104 +735,9 @@ function FreelancerTradesView() {
 }
 
 // ============================================
-// MARKETPLACE VIEW (existing — for Market Makers)
-// ============================================
-
-function MarketplaceView() {
-  const [activeTab, setActiveTab] = useState<'buy' | 'sell'>('sell');
-  const [isLoading, setIsLoading] = useState(true);
-  const orders = useStore((s) => s.orders);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const filteredOrders = orders.filter((order) => {
-    if (activeTab === 'buy') {
-      return order.type === 'sell' && order.status === 'open';
-    } else {
-      return order.type === 'buy' && order.status === 'open';
-    }
-  });
-
-  return (
-    <>
-      <h1 className="text-h3 text-black mb-6">Marketplace</h1>
-
-      <div className="flex gap-6 border-b border-gray-200 mb-6">
-        <button
-          type="button"
-          onClick={() => setActiveTab('buy')}
-          className={`text-body pb-3 -mb-px transition-colors ${
-            activeTab === 'buy'
-              ? 'text-primary-600 font-semibold border-b-2 border-primary-500'
-              : 'text-gray-500 font-medium hover:text-primary-500'
-          }`}
-        >
-          Buy USDC
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('sell')}
-          className={`text-body pb-3 -mb-px transition-colors ${
-            activeTab === 'sell'
-              ? 'text-primary-600 font-semibold border-b-2 border-primary-500'
-              : 'text-gray-500 font-medium hover:text-primary-500'
-          }`}
-        >
-          Sell USDC
-        </button>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <OrderCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : filteredOrders.length > 0 ? (
-        <div className="space-y-4">
-          {filteredOrders.map((order, index) => (
-            <FadeIn key={order.id} delay={index * 0.05}>
-              <OrderCard order={order} />
-            </FadeIn>
-          ))}
-        </div>
-      ) : (
-        <FadeIn>
-          <EmptyState
-            icon={<Package className="w-16 h-16 text-gray-300" />}
-            title="No orders available. Check back later or create your own order."
-          />
-        </FadeIn>
-      )}
-    </>
-  );
-}
-
-// ============================================
-// MAIN PAGE (role-aware)
+// MAIN PAGE
 // ============================================
 
 export default function OrdersPage() {
-  const { isFreelancer, loading } = useUser();
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse"
-          >
-            <div className="h-4 w-32 bg-gray-200 rounded mb-3" />
-            <div className="h-4 w-48 bg-gray-200 rounded" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return isFreelancer ? <FreelancerTradesView /> : <MarketplaceView />;
+  return <FreelancerTradesView />;
 }

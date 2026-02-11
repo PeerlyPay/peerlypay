@@ -4,6 +4,8 @@ import LayoutShell from "@/components/LayoutShell";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import { UserProvider } from "@/contexts/UserContext";
+import { BalanceProvider } from "@/contexts/BalanceContext";
+import { TradeHistoryProvider } from "@/contexts/TradeHistoryContext";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -31,8 +33,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${dmSans.variable} ${spaceGrotesk.variable} font-sans`}>
         <UserProvider>
-          <LayoutShell>{children}</LayoutShell>
-          <Toaster />
+          <BalanceProvider>
+            <TradeHistoryProvider>
+              <LayoutShell>{children}</LayoutShell>
+              <Toaster />
+            </TradeHistoryProvider>
+          </BalanceProvider>
         </UserProvider>
       </body>
     </html>
