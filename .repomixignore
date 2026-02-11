@@ -10,3 +10,6 @@ contracts/CONTRIBUTORS_GUIDELINE.md
 contracts/GIT_GUIDELINE.md
 contracts/.artifacts/
 contracts/.stellar/
+
+
+contracts/contracts/escrow/
