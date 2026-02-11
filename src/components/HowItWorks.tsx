@@ -2,45 +2,49 @@
 
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { CircleDollarSign, RefreshCw, Shield } from 'lucide-react';
 
 const steps = [
-  { icon: '💵', text: 'Ingresás el monto en USDC' },
-  { icon: '🤝', text: 'Te matcheamos con el mejor vendedor' },
-  { icon: '⚡', text: 'Recibís ARS en minutos' },
+  { icon: CircleDollarSign, text: 'Buy or sell USDC with pesos' },
+  { icon: RefreshCw, text: 'Get auto-matched with the best offer' },
+  { icon: Shield, text: 'Your payment is secured with escrow' },
+  { icon: CircleDollarSign, text: 'Receive ARS in minutes' },
 ];
 
 export default function HowItWorks() {
   const router = useRouter();
 
   return (
-    <div className="mt-6 rounded-2xl border border-primary-200 bg-gradient-to-br from-primary-50 via-white to-primary-50 p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-xl">📚</span>
-        <h3 className="text-h5 text-gray-900">Cómo funciona PeerlyPay</h3>
+    <section className="flex flex-col gap-6 py-3">
+      <div className="px-4">
+        <h3 className="font-display text-[21px] font-bold leading-normal text-dark-500">
+          How Peerly Pay works
+        </h3>
       </div>
 
-      <div className="space-y-3">
-        {steps.map((step, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm">
-              {step.icon}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-500 text-xs font-semibold text-white">
-                {i + 1}
-              </span>
-              <p className="text-body-sm text-gray-700">{step.text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      <div className="flex flex-col gap-6 rounded-md border border-[#e5e5e5] bg-white px-4 py-6 shadow-[0px_4px_4px_0px_rgba(174,174,174,0.25)]">
+        <div className="flex flex-col gap-3">
+          {steps.map((step, i) => {
+            const Icon = step.icon;
+            return (
+              <div key={i} className="flex items-center gap-1.5">
+                <Icon className="size-4 shrink-0 text-primary-500" strokeWidth={1.5} />
+                <p className="text-[15px] leading-[1.5] text-[#0f172a]">
+                  {step.text}
+                </p>
+              </div>
+            );
+          })}
+        </div>
 
-      <Button
-        onClick={() => router.push('/trade')}
-        className="mt-5 w-full rounded-xl bg-magenta-500 py-3 text-white hover:bg-magenta-600"
-      >
-        Hacer mi primer trade
-      </Button>
-    </div>
+        <Button
+          onClick={() => router.push('/trade')}
+          size="lg"
+          className="w-full rounded-md bg-magenta-500 text-white hover:bg-magenta-600"
+        >
+          Make my first trade
+        </Button>
+      </div>
+    </section>
   );
 }

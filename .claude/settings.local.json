@@ -11,7 +11,9 @@
       "Bash(curl:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill:*)",
-      "mcp__figma__get_design_context"
+      "mcp__figma__get_design_context",
+      "mcp__figma__whoami",
+      "Bash(wc:*)"
     ]
   }
 }
