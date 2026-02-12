@@ -1,0 +1,12 @@
+export default function ConfirmTradeIcon() {
+  return (
+    <svg viewBox="0 0 120 120" fill="none" className="w-32 h-32" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="60" cy="60" r="60" fill="#E9D5FF" />
+      <circle cx="60" cy="60" r="46" fill="#A855F7" />
+      <path d="M69.3333 39L78.6666 48.3333L69.3333 57.6667" stroke="#F8F7F7" strokeWidth="2.91667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M78.6666 48.333H41.3333" stroke="#F8F7F7" strokeWidth="2.91667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M50.6666 80.9997L41.3333 71.6663L50.6666 62.333" stroke="#F8F7F7" strokeWidth="2.91667" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M41.3333 71.667H78.6666" stroke="#F8F7F7" strokeWidth="2.91667" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

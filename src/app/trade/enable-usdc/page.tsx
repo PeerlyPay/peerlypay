@@ -2,18 +2,13 @@
 
 import { useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import {
-  Shield,
   Loader2,
   ChevronDown,
   ArrowLeft,
   Info,
-  Wallet,
-  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useStore } from '@/lib/store';
 
 // ============================================
 // CANCEL MODAL
@@ -81,7 +76,7 @@ function TrustlineInfo() {
       >
         <Info className="size-4 text-gray-400 shrink-0" />
         <span className="text-body-sm font-medium text-gray-600 flex-1">
-          ¿Qué es un trustline?
+          Why is this needed?
         </span>
         <ChevronDown
           className={cn(
@@ -97,20 +92,10 @@ function TrustlineInfo() {
           expanded ? 'max-h-60' : 'max-h-0'
         )}
       >
-        <div className="px-4 pb-4 space-y-2">
+        <div className="px-4 pb-4">
           <p className="text-body-sm text-gray-500">
-            En la red Stellar, un <strong className="text-gray-700">trustline</strong> es
-            un permiso que le das a tu wallet para recibir un token específico (como USDC).
+            Stellar wallets need permission to hold each token type. This is a one-time setup for USDC.
           </p>
-          <p className="text-body-sm text-gray-500">
-            Es como abrir una cuenta en una moneda nueva. Solo se hace una vez y no tiene costo adicional.
-          </p>
-          <div className="flex items-center gap-2 pt-1">
-            <Shield className="size-3.5 text-emerald-500 shrink-0" />
-            <span className="text-caption text-emerald-600 font-medium">
-              100% seguro y reversible
-            </span>
-          </div>
         </div>
       </div>
     </div>
@@ -124,7 +109,6 @@ function TrustlineInfo() {
 function EnableUsdcContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user } = useStore();
 
   const amount = searchParams.get('amount') || '0';
   const [isEnabling, setIsEnabling] = useState(false);
@@ -145,58 +129,38 @@ function EnableUsdcContent() {
     router.push('/trade');
   }, [router]);
 
-  // Shorten wallet address for display
-  const walletDisplay = user.walletAddress
-    ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
-    : null;
-
   return (
     <div className="flex flex-col min-h-dvh bg-white">
-      {/* Header — Logo + Wallet */}
-      <header className="flex items-center justify-between px-4 pt-4 pb-3">
-        <div className="flex items-center gap-2">
-          <Image
-            src="/x_icon_black.png"
-            alt="PeerlyPay"
-            width={28}
-            height={28}
-            className="shrink-0 object-contain h-7 w-7"
-          />
-          <span className="font-display font-bold text-xl">PeerlyPay</span>
-        </div>
-
-        {walletDisplay && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full">
-            <Wallet className="size-3.5 text-gray-500" />
-            <span className="font-mono text-xs text-gray-600">
-              {walletDisplay}
-            </span>
-          </div>
-        )}
+      {/* Header */}
+      <header className="flex items-center gap-3 px-4 pt-4 pb-3">
+        <button
+          type="button"
+          onClick={() => setShowCancel(true)}
+          disabled={isEnabling}
+          className="flex items-center justify-center size-6 text-gray-900"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+        <span className="font-[family-name:var(--font-space-grotesk)] text-[19px] font-semibold text-gray-900">
+          Enable USDC
+        </span>
       </header>
 
       {/* Main content — centered */}
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Icon */}
-        <div className="relative mb-8">
-          <div className="flex items-center justify-center size-28 rounded-full bg-gradient-to-br from-fuchsia-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20">
-            <div className="flex items-center justify-center size-20 rounded-full bg-white/20 backdrop-blur-sm">
-              <Shield className="size-10 text-white" strokeWidth={1.5} />
-            </div>
-          </div>
-          {/* Subtle glow ring */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-fuchsia-500/20 to-indigo-500/20 blur-xl -z-10 scale-125" />
-        </div>
+        <img
+          src="/icons/enable-usdc.svg"
+          alt="Enable USDC"
+          className="size-28 mb-8"
+        />
 
         {/* Text */}
         <h1 className="font-[family-name:var(--font-space-grotesk)] text-2xl font-bold text-gray-900 mb-3 text-center">
-          Enable USDC
+          One-time setup
         </h1>
-        <p className="text-body text-gray-500 text-center mb-2 max-w-[300px]">
-          Allow your wallet to receive USDC for this trade.
-        </p>
-        <p className="text-body-sm text-gray-400 text-center max-w-[280px]">
-          This is a one-time setup on Stellar network
+        <p className="text-body text-gray-500 text-center max-w-[300px]">
+          Allow your wallet to receive USDC tokens.
         </p>
       </div>
 
@@ -214,7 +178,7 @@ function EnableUsdcContent() {
             'w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white transition-all active:scale-[0.98]',
             isEnabling
               ? 'bg-fuchsia-400 cursor-wait'
-              : 'bg-gradient-to-r from-fuchsia-500 to-purple-600 shadow-lg shadow-fuchsia-500/25 hover:opacity-90'
+              : 'bg-fuchsia-500 hover:bg-fuchsia-600 shadow-lg shadow-fuchsia-500/25'
           )}
         >
           {isEnabling ? (
