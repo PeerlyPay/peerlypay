@@ -325,7 +325,7 @@ function SuccessContent() {
           <div className="flex items-center gap-2.5 px-4 py-3.5 bg-emerald-50 rounded-2xl">
             <Wallet className="size-5 text-emerald-600 shrink-0" />
             <span className="text-body-sm font-medium text-emerald-700">
-              Tu USDC ya está disponible en tu wallet
+              Your USDC is now available in your wallet
             </span>
           </div>
 

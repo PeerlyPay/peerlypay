@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useAuth } from '@crossmint/client-sdk-react-ui';
 import {
-  Wallet,
-  ArrowDownToLine,
   ArrowUpFromLine,
-  HelpCircle,
+  ArrowDownToLine,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,10 @@ import WalletModal from '@/components/WalletModal';
 import DepositModal from '@/components/DepositModal';
 
 const actions = [
-  { icon: Wallet, label: 'Wallet', id: 'wallet' },
-  { icon: ArrowDownToLine, label: 'Deposit', id: 'deposit' },
-  { icon: ArrowUpFromLine, label: 'Withdraw', id: 'withdraw' },
-  { icon: HelpCircle, label: 'Support', id: 'support' },
+  { icon: ArrowUpFromLine, label: 'Send', id: 'send' },
+  { icon: ArrowDownToLine, label: 'Receive', id: 'receive' },
+  { icon: TrendingUp, label: 'Buy', id: 'buy' },
+  { icon: TrendingDown, label: 'Sell', id: 'sell' },
 ] as const;
 
 export default function QuickActions() {
@@ -38,10 +38,10 @@ export default function QuickActions() {
 
   const handleAction = (id: string) => {
     switch (id) {
-      case 'wallet':
+      case 'send':
         setWalletOpen(true);
         break;
-      case 'deposit':
+      case 'receive':
         setDepositOpen(true);
         break;
       default:
@@ -51,17 +51,16 @@ export default function QuickActions() {
 
   return (
     <>
-      <div className="mt-6 grid grid-cols-4 gap-2">
+      <div className="mt-6 flex gap-2">
         {actions.map(({ icon: Icon, label, id }) => (
-          <Button
+          <button
             key={id}
-            variant="ghost"
             onClick={() => handleAction(id)}
-            className="group flex flex-col items-center gap-2 py-3 h-auto text-gray-600 border-1 border-primary-500 rounded-xl hover:bg-gray-50 hover:text-magenta-600 hover:scale-105 transition-all duration-200"
+            className="flex h-[71px] flex-1 flex-col items-center justify-center gap-1 rounded-[14px] border border-primary-500 bg-white transition-colors hover:bg-primary-50"
           >
-            <Icon className="w-8 h-8 text-magenta-500 group-hover:text-magenta-600" />
-            <span className="text-body-sm font-medium">{label}</span>
-          </Button>
+            <Icon className="size-6 text-primary-500" strokeWidth={1.5} />
+            <span className="text-[12px] font-medium leading-5 text-[#4a5464]">{label}</span>
+          </button>
         ))}
       </div>
 

@@ -12,10 +12,8 @@ import {
   Banknote,
   Smartphone,
   Loader2,
-  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useBalance } from '@/contexts/BalanceContext';
 
 /**
  * Mock: check if user wallet has USDC trustline.
@@ -67,12 +65,9 @@ function ConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isChecking, setIsChecking] = useState(false);
-  const { usdc: balance } = useBalance();
-
   const amount = parseFloat(searchParams.get('amount') || '100');
   const mode = (searchParams.get('mode') || 'sell') as 'sell' | 'buy';
   const isSell = mode === 'sell';
-  const insufficientBalance = isSell && balance < amount;
   const rate = MOCK_RATE;
   const fiatAmount = amount * rate;
   const feeUsdc = amount * FEE_RATE;
@@ -211,26 +206,8 @@ function ConfirmContent() {
           </div>
         </div>
 
-        {/* Insufficient Balance Warning */}
-        {insufficientBalance && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-            <div className="flex items-start gap-2.5">
-              <AlertCircle className="size-5 text-red-500 shrink-0 mt-0.5" />
-              <div className="space-y-1.5">
-                <p className="text-body-sm font-medium text-red-800">
-                  Saldo insuficiente
-                </p>
-                <p className="text-body-sm text-red-700">
-                  Necesitas {formatUsdc(amount)} USDC pero solo tienes {formatUsdc(balance)} USDC.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Important Info Box */}
-        {!insufficientBalance && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
             <div className="flex items-start gap-2.5">
               <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
               <div className="space-y-1.5">
@@ -247,7 +224,6 @@ function ConfirmContent() {
               </div>
             </div>
           </div>
-        )}
 
       </div>
 
@@ -256,19 +232,15 @@ function ConfirmContent() {
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={isChecking || insufficientBalance}
+          disabled={isChecking}
           className={cn(
             'w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white transition-all active:scale-[0.98]',
-            insufficientBalance
-              ? 'bg-gray-300 cursor-not-allowed'
-              : isChecking
-                ? 'bg-fuchsia-400 cursor-wait'
-                : 'bg-gradient-to-r from-fuchsia-500 to-purple-600 shadow-lg shadow-fuchsia-500/25 hover:opacity-90'
+            isChecking
+              ? 'bg-fuchsia-400 cursor-wait'
+              : 'bg-gradient-to-r from-fuchsia-500 to-purple-600 shadow-lg shadow-fuchsia-500/25 hover:opacity-90'
           )}
         >
-          {insufficientBalance ? (
-            'Saldo insuficiente'
-          ) : isChecking ? (
+          {isChecking ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="size-5 animate-spin" />
               Verificando wallet...

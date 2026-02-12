@@ -174,7 +174,7 @@ export default function WalletButton() {
           {/* Balance section */}
           <div className="border-b border-gray-100 px-4 py-4">
             <p className="font-sans text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-              Balance disponible
+              Balance available
             </p>
             <p className="mt-1 font-display text-2xl font-bold tracking-tight text-gray-900">
               ${formattedBalance}
