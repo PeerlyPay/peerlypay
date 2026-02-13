@@ -236,7 +236,8 @@ export default function QuickTradeInput() {
   // FULLSCREEN LIGHT UI
   // ============================================
   return (
-    <div className="fixed inset-0 z-50 flex flex-col h-dvh bg-white">
+    <div className="fixed inset-0 z-50 bg-white">
+      <div className="mx-auto flex h-dvh w-full max-w-120 flex-col bg-white">
       {/* ============================================
           TOP BAR: back + toggle + help
           ============================================ */}
@@ -409,6 +410,7 @@ export default function QuickTradeInput() {
         >
           Continuar
         </button>
+      </div>
       </div>
     </div>
   );

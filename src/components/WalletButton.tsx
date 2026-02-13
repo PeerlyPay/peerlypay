@@ -1,10 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { useAuth, useWallet } from '@crossmint/client-sdk-react-ui';
-import { toast } from 'sonner';
-import { Wallet, Loader2, Copy, ExternalLink, Power, ChevronDown } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { useState, useRef, useEffect } from "react";
+import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
+import { toast } from "sonner";
+import {
+  Wallet,
+  Loader2,
+  Copy,
+  ExternalLink,
+  Power,
+  ChevronDown,
+} from "lucide-react";
+import { useStore } from "@/lib/store";
 
 function shortenAddress(address: string): string {
   if (address.length <= 12) return address;
@@ -29,11 +36,15 @@ export default function WalletButton() {
 
   useEffect(() => {
     if (wallet?.address) {
-      connectWallet(wallet.address, wallet.owner ?? null, status ?? 'logged-in');
+      connectWallet(
+        wallet.address,
+        wallet.owner ?? null,
+        status ?? "logged-in",
+      );
       return;
     }
 
-    if (status === 'logged-out') {
+    if (status === "logged-out") {
       disconnectWallet();
     }
   }, [connectWallet, disconnectWallet, status, wallet?.address, wallet?.owner]);
@@ -41,25 +52,28 @@ export default function WalletButton() {
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setIsOpen(false);
       }
     }
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
   // Close on Escape
   useEffect(() => {
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === "Escape") setIsOpen(false);
     }
     if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
+      document.addEventListener("keydown", handleEscape);
     }
-    return () => document.removeEventListener('keydown', handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen]);
 
   const handleConnect = async () => {
@@ -67,9 +81,9 @@ export default function WalletButton() {
 
     try {
       await login();
-      toast.success('Crossmint login iniciado');
+      toast.success("Crossmint login iniciado");
     } catch {
-      toast.error('No se pudo iniciar el login');
+      toast.error("No se pudo iniciar el login");
     } finally {
       setIsConnecting(false);
     }
@@ -80,44 +94,44 @@ export default function WalletButton() {
       await logout();
       disconnectWallet();
       setIsOpen(false);
-      toast.info('Wallet desconectada');
+      toast.info("Wallet desconectada");
     } catch {
-      toast.error('No se pudo cerrar la sesion');
+      toast.error("No se pudo cerrar la sesion");
     }
   };
 
   const handleCopyAddress = async () => {
     if (!activeWalletAddress) {
-      toast.error('No wallet address available');
+      toast.error("No wallet address available");
       return;
     }
 
     await navigator.clipboard.writeText(activeWalletAddress);
-    toast.success('Direccion copiada');
+    toast.success("Direccion copiada");
     setIsOpen(false);
   };
 
   const handleOpenExplorer = () => {
     if (!activeWalletAddress) {
-      toast.error('No wallet address available');
+      toast.error("No wallet address available");
       return;
     }
 
     window.open(
       `https://stellar.expert/explorer/testnet/account/${activeWalletAddress}`,
-      '_blank'
+      "_blank",
     );
     setIsOpen(false);
   };
 
-  const formattedBalance = balance.usdc.toLocaleString('en-US', {
+  const formattedBalance = balance.usdc.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 
   // --- Disconnected ---
   if (!isConnected) {
-    const isAuthLoading = status === 'initializing' || isConnecting;
+    const isAuthLoading = status === "initializing" || isConnecting;
 
     return (
       <button
@@ -141,7 +155,9 @@ export default function WalletButton() {
   }
 
   // --- Connected ---
-  const displayAddr = activeWalletAddress ? shortenAddress(activeWalletAddress) : '0x...';
+  const displayAddr = activeWalletAddress
+    ? shortenAddress(activeWalletAddress)
+    : "0x...";
 
   return (
     <div ref={dropdownRef} className="relative">
@@ -156,7 +172,7 @@ export default function WalletButton() {
         <span className="inline-flex size-2 rounded-full bg-emerald-400" />
         <span className="text-gray-600">{displayAddr}</span>
         <ChevronDown
-          className={`size-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+          className={`size-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />
       </button>
 

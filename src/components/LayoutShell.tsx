@@ -4,12 +4,14 @@ import { usePathname } from 'next/navigation';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 
-/** Route prefixes that render fullscreen without Header/BottomNav */
-const FULLSCREEN_PREFIXES = ['/trade'];
+/** Routes that render fullscreen without Header/BottomNav */
+function isFullscreenRoute(pathname: string): boolean {
+  return pathname.startsWith('/trade/');
+}
 
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isFullscreen = FULLSCREEN_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isFullscreen = isFullscreenRoute(pathname);
 
   if (isFullscreen) {
     return <>{children}</>;
