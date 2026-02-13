@@ -1,14 +1,13 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { CircleDollarSign, RefreshCw, Shield } from 'lucide-react';
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { CircleDollarSign, RefreshCw, Shield } from "lucide-react";
 
 const steps = [
-  { icon: CircleDollarSign, text: 'Buy or sell USDC with pesos' },
-  { icon: RefreshCw, text: 'Get auto-matched with the best offer' },
-  { icon: Shield, text: 'Your payment is secured with escrow' },
-  { icon: CircleDollarSign, text: 'Receive ARS in minutes' },
+  { icon: CircleDollarSign, text: "Buy or sell USDC with pesos" },
+  { icon: RefreshCw, text: "Get auto-matched with the best offer" },
+  { icon: CircleDollarSign, text: "Receive ARS in minutes" },
 ];
 
 export default function HowItWorks() {
@@ -29,7 +28,10 @@ export default function HowItWorks() {
             return (
               <div key={i} className="flex items-center gap-3 px-1 py-1">
                 <span className="inline-flex size-8 items-center justify-center rounded-lg border border-fuchsia-200 bg-white">
-                  <Icon className="size-4 shrink-0 text-primary-500" strokeWidth={1.75} />
+                  <Icon
+                    className="size-4 shrink-0 text-primary-500"
+                    strokeWidth={1.75}
+                  />
                 </span>
                 <p className="text-base leading-relaxed text-[#0f172a]">
                   {step.text}
@@ -40,7 +42,7 @@ export default function HowItWorks() {
         </div>
 
         <Button
-          onClick={() => router.push('/trade')}
+          onClick={() => router.push("/trade")}
           size="lg"
           className="h-12 w-full rounded-xl bg-magenta-500 text-base font-semibold text-white hover:bg-magenta-600"
         >
