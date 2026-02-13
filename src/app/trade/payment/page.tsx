@@ -121,15 +121,11 @@ function PaymentContent() {
 
   // Countdown timer
   useEffect(() => {
-    if (timeLeft <= 0) {
-      setExpired(true);
-      return;
-    }
-
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
+          setExpired(true);
           return 0;
         }
         return prev - 1;
@@ -137,16 +133,15 @@ function PaymentContent() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timeLeft]);
+  }, []);
 
   // Copy CBU
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(MOCK_PAYMENT.cbu);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for non-secure contexts
+      // clipboard unavailable
+    } finally {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

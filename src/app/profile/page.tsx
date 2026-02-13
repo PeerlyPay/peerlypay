@@ -50,11 +50,12 @@ export default function ProfilePage() {
 
     try {
       await navigator.clipboard.writeText(user.walletAddress);
-      setCopied(true);
       toast.success("Wallet copied");
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy wallet");
+    } finally {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 

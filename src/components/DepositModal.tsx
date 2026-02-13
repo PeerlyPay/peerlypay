@@ -31,10 +31,11 @@ export default function DepositModal({
   const handleCopyAddress = async () => {
     try {
       await navigator.clipboard.writeText(fullAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
+    } finally {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 

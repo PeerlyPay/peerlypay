@@ -188,9 +188,9 @@ function SuccessContent() {
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(MOCK_TXN_ID);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
+      // clipboard unavailable
+    } finally {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

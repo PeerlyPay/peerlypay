@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { AlertTriangle, Copy, Loader2, Check, Star, RefreshCw, Wallet, Banknote, CircleCheck, PartyPopper } from 'lucide-react';
@@ -67,6 +67,11 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(3);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   const isSeller =
     order &&
@@ -99,6 +104,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const advanceToStep1 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
+    if (!isMountedRef.current) return;
     setMessages((prev) => addSystemMessage(prev, 'Trustline activated. You can now receive USDC.'));
     setSimStep(1);
     setCountdown(3);
@@ -109,6 +115,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const advanceToStep2 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
+    if (!isMountedRef.current) return;
     setMessages((prev) =>
       addSystemMessage(
         addSystemMessage(prev, 'Funds deposited in escrow'),
@@ -124,6 +131,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const advanceToStep3 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
+    if (!isMountedRef.current) return;
     setMessages((prev) =>
       addSystemMessage(prev, 'Buyer marked payment as sent.')
     );
@@ -136,6 +144,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
   const advanceToStep4 = useCallback(async () => {
     setIsUpdating(true);
     await new Promise((r) => setTimeout(r, 500));
+    if (!isMountedRef.current) return;
     setMessages((prev) =>
       addSystemMessage(prev, 'USDC released successfully!')
     );
