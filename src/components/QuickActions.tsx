@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@crossmint/client-sdk-react-ui';
 import {
-  Wallet,
+  Send,
   ArrowDownToLine,
-  ArrowUpFromLine,
-  HelpCircle,
+  ShoppingCart,
+  HandCoins,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,13 +16,14 @@ import WalletModal from '@/components/WalletModal';
 import DepositModal from '@/components/DepositModal';
 
 const actions = [
-  { icon: Wallet, label: 'Wallet', id: 'wallet' },
-  { icon: ArrowDownToLine, label: 'Deposit', id: 'deposit' },
-  { icon: ArrowUpFromLine, label: 'Withdraw', id: 'withdraw' },
-  { icon: HelpCircle, label: 'Support', id: 'support' },
+  { icon: Send, label: 'Send', id: 'send' },
+  { icon: ArrowDownToLine, label: 'Receive', id: 'receive' },
+  { icon: ShoppingCart, label: 'Buy', id: 'buy' },
+  { icon: HandCoins, label: 'Sell', id: 'sell' },
 ] as const;
 
 export default function QuickActions() {
+  const router = useRouter();
   const { user, disconnectWallet } = useStore();
   const { logout } = useAuth();
   const [walletOpen, setWalletOpen] = useState(false);
@@ -38,11 +40,17 @@ export default function QuickActions() {
 
   const handleAction = (id: string) => {
     switch (id) {
-      case 'wallet':
-        setWalletOpen(true);
+      case 'send':
+        toast.info('Send coming soon');
         break;
-      case 'deposit':
+      case 'receive':
         setDepositOpen(true);
+        break;
+      case 'buy':
+        router.push('/trade?mode=buy');
+        break;
+      case 'sell':
+        router.push('/trade?mode=sell');
         break;
       default:
         toast.info(`${id.charAt(0).toUpperCase() + id.slice(1)} coming soon`);

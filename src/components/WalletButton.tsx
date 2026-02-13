@@ -5,6 +5,7 @@ import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { toast } from "sonner";
 import {
   Wallet,
+  User,
   Loader2,
   Copy,
   ExternalLink,
@@ -155,22 +156,18 @@ export default function WalletButton() {
   }
 
   // --- Connected ---
-  const displayAddr = activeWalletAddress
-    ? shortenAddress(activeWalletAddress)
-    : "0x...";
 
   return (
     <div ref={dropdownRef} className="relative">
       {/* Trigger */}
       <button
         onClick={() => setIsOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 font-mono text-sm transition-all duration-200 hover:border-gray-300 hover:shadow-sm active:scale-[0.98]"
+        className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 font-sans text-sm transition-all duration-200 hover:border-gray-300 hover:shadow-sm active:scale-[0.98]"
       >
-        <span className="text-yellow-500 text-xs">&#9889;</span>
-        <span className="font-semibold text-gray-900">${formattedBalance}</span>
-        <span className="text-gray-300">|</span>
-        <span className="inline-flex size-2 rounded-full bg-emerald-400" />
-        <span className="text-gray-600">{displayAddr}</span>
+        <span className="inline-flex size-7 items-center justify-center rounded-full bg-fuchsia-500 text-white ring-1 ring-fuchsia-200">
+          <User className="size-3.5" strokeWidth={2.25} aria-hidden />
+        </span>
+        <span className="font-medium text-gray-700">Account</span>
         <ChevronDown
           className={`size-3.5 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
         />

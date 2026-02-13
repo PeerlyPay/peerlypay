@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Delete,
   Loader2,
@@ -139,8 +139,10 @@ function SegmentedToggle({ mode, onChange }: SegmentedToggleProps) {
 // ============================================
 export default function QuickTradeInput() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, orders } = useStore();
-  const [mode, setMode] = useState<TradeMode>("sell");
+  const initialMode = searchParams.get("mode") === "buy" ? "buy" : "sell";
+  const [mode, setMode] = useState<TradeMode>(initialMode);
   const [inputValue, setInputValue] = useState("");
   const [estimate, setEstimate] = useState<QuickTradeEstimate | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
