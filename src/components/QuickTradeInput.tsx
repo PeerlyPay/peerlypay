@@ -7,8 +7,6 @@ import {
   Loader2,
   Shield,
   AlertCircle,
-  ArrowLeft,
-  HelpCircle,
   ChevronRight,
   TrendingDown,
   TrendingUp,
@@ -249,25 +247,10 @@ export default function QuickTradeInput() {
   return (
     <div className="flex min-h-[calc(100dvh-11rem)] w-full flex-col bg-white">
       {/* ============================================
-          TOP BAR: back + toggle + help
+          TOP BAR: toggle
           ============================================ */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <button
-          type="button"
-          onClick={() => router.push("/quick-trade")}
-          className="flex items-center justify-center size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-        >
-          <ArrowLeft className="size-5 text-gray-600" />
-        </button>
-
+      <div className="flex items-center justify-center px-4 pt-3 pb-1">
         <SegmentedToggle mode={mode} onChange={handleModeChange} />
-
-        <button
-          type="button"
-          className="flex items-center justify-center size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-        >
-          <HelpCircle className="size-5 text-gray-400" />
-        </button>
       </div>
 
       {/* ============================================
