@@ -178,7 +178,7 @@ function StatusBadge({ status }: { status: TradeStatus }) {
   const config = {
     active: {
       label: 'En progreso',
-      className: 'bg-amber-50 text-amber-700 border-amber-200',
+      className: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
     },
     completed: {
       label: 'Completado',
@@ -226,7 +226,7 @@ function TradeCard({
         'transition-all duration-200 hover:border-gray-300 hover:shadow-sm',
         'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:ring-offset-2',
         'active:scale-[0.98]',
-        trade.status === 'active' && 'border-l-4 border-l-amber-400'
+        trade.status === 'active' && 'border-l-4 border-l-fuchsia-400'
       )}
     >
       {/* Header: date + status */}
@@ -259,7 +259,7 @@ function TradeCard({
           <span className="text-xs font-medium text-gray-600">
             @{trade.counterparty.username}
           </span>
-          <span className="text-xs text-amber-500">
+          <span className="text-xs text-fuchsia-500">
             ★ {trade.counterparty.reputation}
           </span>
           <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
@@ -365,7 +365,7 @@ function TradeDetailSheet({
               <span className="text-body-sm text-gray-500">Contraparte</span>
               <span className="text-body-sm font-medium text-gray-700">
                 @{trade.counterparty.username}{' '}
-                <span className="text-amber-500">
+                <span className="text-fuchsia-500">
                   ★ {trade.counterparty.reputation}
                 </span>
               </span>
@@ -466,7 +466,7 @@ function TradeDetailSheet({
                         className={cn(
                           'size-7 transition-colors',
                           rating >= star
-                            ? 'fill-amber-400 text-amber-400'
+                            ? 'fill-fuchsia-500 text-fuchsia-500'
                             : 'fill-transparent text-gray-300'
                         )}
                       />
