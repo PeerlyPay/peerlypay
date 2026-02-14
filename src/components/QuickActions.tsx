@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@crossmint/client-sdk-react-ui';
 import {
   ArrowUpFromLine,
@@ -22,6 +23,7 @@ const actions = [
 ] as const;
 
 export default function QuickActions() {
+  const router = useRouter();
   const { user, disconnectWallet } = useStore();
   const { logout } = useAuth();
   const [walletOpen, setWalletOpen] = useState(false);
@@ -43,6 +45,12 @@ export default function QuickActions() {
         break;
       case 'receive':
         setDepositOpen(true);
+        break;
+      case 'buy':
+        router.push('/trade?mode=buy');
+        break;
+      case 'sell':
+        router.push('/trade?mode=sell');
         break;
       default:
         toast.info(`${id.charAt(0).toUpperCase() + id.slice(1)} coming soon`);

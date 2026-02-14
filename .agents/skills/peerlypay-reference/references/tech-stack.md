@@ -12,6 +12,7 @@
 
 ## Dependencies
 
+- @crossmint/client-sdk-react-ui (^2.6.16)
 - @radix-ui/react-dialog (^1.1.15)
 - @radix-ui/react-dropdown-menu (^2.1.16)
 - @radix-ui/react-label (^2.1.8)
@@ -23,6 +24,7 @@
 - lucide-react (^0.563.0)
 - next (16.1.6)
 - next-themes (^0.4.6)
+- qrcode.react (^4.2.0)
 - react (19.2.3)
 - react-dom (19.2.3)
 - sonner (^2.0.7)

@@ -1,35 +1,39 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { CircleDollarSign, RefreshCw, Shield } from 'lucide-react';
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { CircleDollarSign, RefreshCw, Shield } from "lucide-react";
 
 const steps = [
-  { icon: CircleDollarSign, text: 'Buy or sell USDC with pesos' },
-  { icon: RefreshCw, text: 'Get auto-matched with the best offer' },
-  { icon: Shield, text: 'Your payment is secured with escrow' },
-  { icon: CircleDollarSign, text: 'Receive ARS in minutes' },
+  { icon: CircleDollarSign, text: "Buy or sell USDC with pesos" },
+  { icon: RefreshCw, text: "Get auto-matched with the best offer" },
+  { icon: CircleDollarSign, text: "Receive ARS in minutes" },
 ];
 
 export default function HowItWorks() {
   const router = useRouter();
 
   return (
-    <section className="flex flex-col gap-6 py-3">
-      <div className="px-4">
-        <h3 className="font-display text-[21px] font-bold leading-normal text-dark-500">
+    <section className="flex flex-col gap-4 pt-8 pb-5">
+      <div className="px-1">
+        <h3 className="font-display text-[22px] font-bold leading-normal text-dark-500">
           How Peerly Pay works
         </h3>
       </div>
 
-      <div className="flex flex-col gap-6 rounded-md border border-[#e5e5e5] bg-white px-4 py-6 shadow-[0px_4px_4px_0px_rgba(174,174,174,0.25)]">
-        <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4">
           {steps.map((step, i) => {
             const Icon = step.icon;
             return (
-              <div key={i} className="flex items-center gap-1.5">
-                <Icon className="size-4 shrink-0 text-primary-500" strokeWidth={1.5} />
-                <p className="text-[15px] leading-[1.5] text-[#0f172a]">
+              <div key={i} className="flex items-center gap-3 px-1 py-1">
+                <span className="inline-flex size-8 items-center justify-center rounded-lg border border-fuchsia-200 bg-white">
+                  <Icon
+                    className="size-4 shrink-0 text-primary-500"
+                    strokeWidth={1.75}
+                  />
+                </span>
+                <p className="text-base leading-relaxed text-[#0f172a]">
                   {step.text}
                 </p>
               </div>
@@ -38,9 +42,9 @@ export default function HowItWorks() {
         </div>
 
         <Button
-          onClick={() => router.push('/trade')}
+          onClick={() => router.push("/trade")}
           size="lg"
-          className="w-full rounded-md bg-magenta-500 text-white hover:bg-magenta-600"
+          className="h-12 w-full rounded-xl bg-magenta-500 text-base font-semibold text-white hover:bg-magenta-600"
         >
           Make my first trade
         </Button>

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Delete,
   AlertCircle,
@@ -37,7 +37,7 @@ function formatArs(value: number): string {
 }
 
 function formatUsdc(value: number): string {
-  return value.toLocaleString('en-US', {
+  return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -90,6 +90,7 @@ function Numpad({ onKey, disabled }: { onKey: (key: string) => void; disabled?: 
 // ─── Main Component ───────────────────────────────
 export default function QuickTradeInput() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, orders } = useStore();
 
   const [mode, setMode] = useState<TradeMode>('buy');
@@ -162,7 +163,7 @@ export default function QuickTradeInput() {
 
   // Numpad input handler
   const handleKey = useCallback((key: string) => {
-    if (key === 'delete') {
+    if (key === "delete") {
       setInputValue((prev) => prev.slice(0, -1));
       return;
     }

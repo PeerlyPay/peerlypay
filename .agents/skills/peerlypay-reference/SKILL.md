@@ -1,11 +1,11 @@
 ---
 name: peerlypay-reference
-description: Reference codebase for Peerlypay Stellar. Use this skill when you need to understand the structure, implementation patterns, or code details of the Peerlypay Stellar project.
+description: Reference codebase for Peerlypay. Use this skill when you need to understand the structure, implementation patterns, or code details of the Peerlypay project.
 ---
 
-# Peerlypay Stellar Codebase Reference
+# Peerlypay Codebase Reference
 
-57 files | 5062 lines | 41288 tokens
+83 files | 10479 lines | 86636 tokens
 
 ## Overview
 
