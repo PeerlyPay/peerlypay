@@ -7,7 +7,6 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  ChevronRight,
   Copy,
   Check,
   Star,
@@ -15,6 +14,7 @@ import {
   Flag,
   RefreshCw,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useTradeHistory, CompletedTrade } from '@/contexts/TradeHistoryContext';
 import EmptyState from '@/components/EmptyState';
 import FadeIn from '@/components/FadeIn';
@@ -177,38 +177,46 @@ function formatRate(value: number): string {
 function StatusBadge({ status }: { status: TradeStatus }) {
   const config = {
     active: {
-      label: 'En progreso',
-      className: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+      label: 'IN PROGRESS',
+      variant: 'outline' as const,
+      className: '',
     },
     completed: {
-      label: 'Completado',
-      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      label: 'COMPLETED',
+      variant: 'default' as const,
+      className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     },
     disputed: {
-      label: 'Disputado',
-      className: 'bg-red-50 text-red-700 border-red-200',
+      label: 'DISPUTED',
+      variant: 'destructive' as const,
+      className: 'border-red-200 bg-red-50 text-red-700',
     },
   };
-  const { label, className } = config[status];
+  const { label, variant, className } = config[status];
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border',
-        className
-      )}
-    >
-      {status === 'completed' && (
-        <CheckCircle2 className="size-3" />
-      )}
+    <Badge variant={variant} className={cn('gap-1', className)}>
+      {status === 'completed' && <CheckCircle2 className="size-3" />}
       {label}
-    </span>
+    </Badge>
   );
 }
 
 // ============================================
 // TRADE CARD
 // ============================================
+
+function formatCardDate(dateString: string): string {
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  return `${day}-${month}-${year}, ${h12}:${minutes} ${ampm}`;
+}
 
 function TradeCard({
   trade,
@@ -222,49 +230,33 @@ function TradeCard({
       type="button"
       onClick={onTap}
       className={cn(
-        'w-full bg-white rounded-xl border border-gray-200 p-4 text-left',
-        'transition-all duration-200 hover:border-gray-300 hover:shadow-sm',
+        'w-full bg-white rounded-md border border-gray-200 p-4 text-left',
+        'shadow-[0px_4px_4px_0px_rgba(174,174,174,0.25)]',
+        'transition-all duration-200 hover:border-gray-300 hover:shadow-md',
         'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:ring-offset-2',
-        'active:scale-[0.98]',
-        trade.status === 'active' && 'border-l-4 border-l-fuchsia-400'
+        'active:scale-[0.98]'
       )}
     >
-      {/* Header: date + status */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-gray-400">
-          {formatDate(trade.createdAt)}
-        </span>
+      {/* Top row: Amount info + status badge */}
+      <div className="flex flex-wrap items-center justify-between gap-y-3">
+        <div className="flex flex-col gap-1">
+          <p className="font-display font-semibold text-[15px] leading-[1.5] text-[#191919]">
+            Sold {formatUsdc(trade.usdcAmount)} USDC
+          </p>
+          <p className="text-xs text-[#0f172a]">
+            Received{' '}
+            <span className="font-bold">
+              ${formatArs(trade.arsAmount)} ARS
+            </span>
+          </p>
+        </div>
         <StatusBadge status={trade.status} />
       </div>
 
-      {/* Amount sold */}
-      <p className="text-sm font-semibold text-gray-900 mb-1">
-        Vendiste {formatUsdc(trade.usdcAmount)} USDC
+      {/* Date */}
+      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.5px] text-[#404040]">
+        {formatCardDate(trade.createdAt)}
       </p>
-
-      {/* Amount received */}
-      <p className="text-sm text-gray-600 mb-2">
-        Recibiste{' '}
-        <span className="font-semibold text-emerald-600">
-          ${formatArs(trade.arsAmount)} ARS
-        </span>
-      </p>
-
-      {/* Rate + counterparty row */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        <span className="text-xs text-gray-400">
-          1 USDC = {formatRate(trade.rate)} ARS
-        </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-gray-600">
-            @{trade.counterparty.username}
-          </span>
-          <span className="text-xs text-fuchsia-500">
-            ★ {trade.counterparty.reputation}
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-        </div>
-      </div>
     </button>
   );
 }
