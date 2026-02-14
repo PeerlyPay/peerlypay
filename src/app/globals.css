@@ -152,6 +152,8 @@
 }
 
 :root {
+  --font-dm-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-space-grotesk: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --radius: 0.625rem;
   --radius-balance-inner: 22px;
   --shadow-balance-card: 0 8px 32px rgb(0 0 0 / 12%);

@@ -53,7 +53,7 @@ export default function WalletConnection() {
     try {
       // Simulate wallet connection delay
       await new Promise((resolve) => setTimeout(resolve, 1200));
-      connectWallet();
+      connectWallet('GDEMO...mock', null, 'logged-in');
       setConnectionState('connected');
       toast.success('Wallet conectada', {
         description: 'Tu wallet está lista para operar',
