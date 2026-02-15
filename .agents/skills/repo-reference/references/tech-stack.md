@@ -13,6 +13,7 @@
 ## Dependencies
 
 - @crossmint/client-sdk-react-ui (^2.6.16)
+- @radix-ui/react-collapsible (^1.1.4)
 - @radix-ui/react-dialog (^1.1.15)
 - @radix-ui/react-dropdown-menu (^2.1.16)
 - @radix-ui/react-label (^2.1.8)
@@ -29,6 +30,7 @@
 - react-dom (19.2.3)
 - sonner (^2.0.7)
 - tailwind-merge (^3.4.0)
+- vaul (^1.1.2)
 - zustand (^5.0.11)
 
 ## Dev Dependencies
