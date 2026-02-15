@@ -3,6 +3,7 @@ SHELL := /bin/bash
 NETWORK ?= testnet
 SOURCE ?= admin
 STELLAR ?= stellar
+P2P_ALIAS ?= p2p
 
 ARTIFACTS_DIR ?= ../../.artifacts
 NETWORK_ARTIFACTS_DIR := $(ARTIFACTS_DIR)/$(NETWORK)
@@ -15,7 +16,7 @@ P2P_LAST_ORDER_ID_FILE ?= $(NETWORK_ARTIFACTS_DIR)/p2p_last_order_id.txt
 ADMIN ?=
 DISPUTE_RESOLVER ?=
 PAUSER ?=
-TOKEN_CONTRACT_ID ?=
+TOKEN_CONTRACT_ID ?= CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
 MAX_DURATION_SECS ?= 2592000
 FILLER_PAYMENT_TIMEOUT_SECS ?= 1800
 
@@ -35,6 +36,8 @@ FIAT_TRANSFER_CONFIRMED ?=true
 ADMIN_ALIAS ?= admin
 CREATOR_ALIAS ?= creator
 FILLER_ALIAS ?= filler
+ARS_RATE_BASE ?= 1475
+ARS_FIAT_CODE ?= 2
 
 define require_var
 	@if [[ -z "$(${1})" ]]; then \
@@ -52,7 +55,7 @@ define require_alias
 	fi
 endef
 
-.PHONY: help check-stellar check-wallets-p2p contract-build contract-install-p2p p2p-deploy p2p-init p2p-get-config p2p-create-order p2p-get-order p2p-take-order p2p-submit-fiat-payment p2p-confirm-fiat-payment p2p-dispute p2p-resolve run-simple-p2p-flow clean-artifacts
+.PHONY: help check-stellar check-wallets-p2p contract-build contract-install-p2p p2p-deploy p2p-init p2p-get-config p2p-create-order p2p-get-order p2p-take-order p2p-submit-fiat-payment p2p-confirm-fiat-payment p2p-dispute p2p-resolve p2p-seed-orders-small p2p-seed-orders run-simple-p2p-flow clean-artifacts
 
 help:
 	@echo "P2P contract commands"
@@ -60,13 +63,15 @@ help:
 	@echo "Core flow:"
 	@echo "  make contract-build"
 	@echo "  make contract-install-p2p NETWORK=testnet SOURCE=admin"
-	@echo "  make p2p-deploy NETWORK=testnet SOURCE=admin"
+	@echo "  make p2p-deploy NETWORK=testnet SOURCE=admin P2P_ALIAS=p2p"
 	@echo "  make p2p-init NETWORK=testnet SOURCE=admin ADMIN=G... DISPUTE_RESOLVER=G... PAUSER=G... TOKEN_CONTRACT_ID=C..."
 	@echo "  make p2p-get-config NETWORK=testnet SOURCE=admin"
 	@echo
 	@echo "Order helpers:"
 	@echo "  make p2p-create-order NETWORK=testnet SOURCE=creator CREATOR=G... FIAT_CURRENCY_CODE=0 PAYMENT_METHOD_CODE=0"
 	@echo "  make p2p-get-order NETWORK=testnet SOURCE=admin ORDER_ID=0"
+	@echo "  make p2p-seed-orders-small NETWORK=testnet"
+	@echo "  make p2p-seed-orders NETWORK=testnet"
 	@echo "  make run-simple-p2p-flow"
 
 check-stellar:
@@ -110,20 +115,32 @@ p2p-deploy: check-stellar
 		echo "Missing P2P_WASM_HASH and no cached hash file found at $(P2P_WASM_HASH_FILE)"; \
 		exit 1; \
 	fi; \
-	CONTRACT_ID="$$( $(STELLAR) contract deploy --network "$(NETWORK)" --source "$(SOURCE)" --wasm-hash "$$WASM_HASH" )"; \
+	CONTRACT_ID="$$( $(STELLAR) contract deploy --network "$(NETWORK)" --source "$(SOURCE)" --wasm-hash "$$WASM_HASH" --alias "$(P2P_ALIAS)" )"; \
 	if [[ -z "$$CONTRACT_ID" ]]; then \
 		echo "Failed to deploy p2p contract"; \
 		exit 1; \
 	fi; \
 	echo "$$CONTRACT_ID" | tee "$(P2P_CONTRACT_ID_FILE)" >/dev/null; \
-	echo "Deployed p2p contract id: $$CONTRACT_ID"
+	echo "Deployed p2p contract id: $$CONTRACT_ID (alias: $(P2P_ALIAS))"
 
 p2p-init: check-stellar
-	$(call require_var,ADMIN)
-	$(call require_var,DISPUTE_RESOLVER)
-	$(call require_var,PAUSER)
 	$(call require_var,TOKEN_CONTRACT_ID)
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@ADMIN_ADDR="$${ADMIN:-$$( $(STELLAR) keys address "$(ADMIN_ALIAS)" 2>/dev/null )}"; \
+	DISPUTE_ADDR="$${DISPUTE_RESOLVER:-$${ADMIN_ADDR}}"; \
+	PAUSER_ADDR="$${PAUSER:-$${ADMIN_ADDR}}"; \
+	if [[ -z "$$ADMIN_ADDR" ]]; then \
+		echo "Missing ADMIN and could not resolve alias $(ADMIN_ALIAS)"; \
+		exit 1; \
+	fi; \
+	if [[ -z "$$DISPUTE_ADDR" ]]; then \
+		echo "Missing DISPUTE_RESOLVER and could not default from ADMIN"; \
+		exit 1; \
+	fi; \
+	if [[ -z "$$PAUSER_ADDR" ]]; then \
+		echo "Missing PAUSER and could not default from ADMIN"; \
+		exit 1; \
+	fi; \
+	CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -131,10 +148,10 @@ p2p-init: check-stellar
 		echo "Missing P2P_CONTRACT_ID and no cached contract id at $(P2P_CONTRACT_ID_FILE)"; \
 		exit 1; \
 	fi; \
-	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- initialize --admin "$(ADMIN)" --dispute_resolver "$(DISPUTE_RESOLVER)" --pauser "$(PAUSER)" --token "$(TOKEN_CONTRACT_ID)" --max_duration_secs "$(MAX_DURATION_SECS)" --filler_payment_timeout_secs "$(FILLER_PAYMENT_TIMEOUT_SECS)"
+	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- initialize --admin "$$ADMIN_ADDR" --dispute_resolver "$$DISPUTE_ADDR" --pauser "$$PAUSER_ADDR" --token "$(TOKEN_CONTRACT_ID)" --max_duration_secs "$(MAX_DURATION_SECS)" --filler_payment_timeout_secs "$(FILLER_PAYMENT_TIMEOUT_SECS)"
 
 p2p-get-config: check-stellar
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -145,9 +162,13 @@ p2p-get-config: check-stellar
 	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- get_config
 
 p2p-create-order: check-stellar
-	$(call require_var,CREATOR)
 	@mkdir -p "$(NETWORK_ARTIFACTS_DIR)"
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CREATOR_ADDR="$${CREATOR:-$$( $(STELLAR) keys address "$(SOURCE)" 2>/dev/null )}"; \
+	if [[ -z "$$CREATOR_ADDR" ]]; then \
+		echo "Missing CREATOR and could not resolve source alias $(SOURCE)"; \
+		exit 1; \
+	fi; \
+	CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -155,13 +176,13 @@ p2p-create-order: check-stellar
 		echo "Missing P2P_CONTRACT_ID and no cached contract id at $(P2P_CONTRACT_ID_FILE)"; \
 		exit 1; \
 	fi; \
-	ORDER_ID_RAW="$$( $(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- create_order_cli --caller "$(CREATOR)" --fiat_currency_code "$(FIAT_CURRENCY_CODE)" --payment_method_code "$(PAYMENT_METHOD_CODE)" --from_crypto "$(FROM_CRYPTO)" --amount "$(AMOUNT)" --exchange_rate "$(EXCHANGE_RATE)" --duration_secs "$(DURATION_SECS)" )"; \
+	ORDER_ID_RAW="$$( $(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- create_order_cli --caller "$$CREATOR_ADDR" --fiat_currency_code "$(FIAT_CURRENCY_CODE)" --payment_method_code "$(PAYMENT_METHOD_CODE)" --from_crypto "$(FROM_CRYPTO)" --amount "$(AMOUNT)" --exchange_rate "$(EXCHANGE_RATE)" --duration_secs "$(DURATION_SECS)" )"; \
 	ORDER_ID="$$(echo "$$ORDER_ID_RAW" | tr -d '"[:space:]')"; \
 	echo "$$ORDER_ID" | tee "$(P2P_LAST_ORDER_ID_FILE)" >/dev/null; \
 	echo "Created order id: $$ORDER_ID"
 
 p2p-get-order: check-stellar
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -181,7 +202,7 @@ p2p-get-order: check-stellar
 
 p2p-take-order: check-stellar
 	$(call require_var,FILLER)
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -197,7 +218,7 @@ p2p-take-order: check-stellar
 
 p2p-submit-fiat-payment: check-stellar
 	$(call require_var,CALLER)
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -213,7 +234,7 @@ p2p-submit-fiat-payment: check-stellar
 
 p2p-confirm-fiat-payment: check-stellar
 	$(call require_var,CALLER)
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -229,7 +250,7 @@ p2p-confirm-fiat-payment: check-stellar
 
 p2p-dispute: check-stellar
 	$(call require_var,CALLER)
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -245,7 +266,7 @@ p2p-dispute: check-stellar
 
 p2p-resolve: check-stellar
 	$(call require_var,CALLER)
-	@CONTRACT_ID="$${P2P_CONTRACT_ID:-}"; \
+	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
 	fi; \
@@ -258,6 +279,31 @@ p2p-resolve: check-stellar
 		exit 1; \
 	fi; \
 	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- resolve_dispute --caller "$(CALLER)" --order_id "$$ORDER" --fiat_transfer_confirmed "$(FIAT_TRANSFER_CONFIRMED)"
+
+p2p-seed-orders-small: check-stellar check-wallets-p2p
+	@CREATOR_ADDR="$$( $(STELLAR) keys address "$(CREATOR_ALIAS)" )"; \
+	FILLER_ADDR="$$( $(STELLAR) keys address "$(FILLER_ALIAS)" )"; \
+	echo "Seeding a small ARS orderbook around $(ARS_RATE_BASE) ARS/USDC"; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(CREATOR_ALIAS)" CREATOR="$$CREATOR_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=0 FROM_CRYPTO=true AMOUNT=100000000 EXCHANGE_RATE="$(ARS_RATE_BASE)" DURATION_SECS=1800; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(FILLER_ALIAS)" CREATOR="$$FILLER_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=1 FROM_CRYPTO=false AMOUNT=75000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)-3))" DURATION_SECS=3600; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(CREATOR_ALIAS)" CREATOR="$$CREATOR_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=2 FROM_CRYPTO=true AMOUNT=250000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)+4))" DURATION_SECS=900; \
+	echo "Seeded 3 orders."
+
+p2p-seed-orders: check-stellar check-wallets-p2p
+	@CREATOR_ADDR="$$( $(STELLAR) keys address "$(CREATOR_ALIAS)" )"; \
+	FILLER_ADDR="$$( $(STELLAR) keys address "$(FILLER_ALIAS)" )"; \
+	echo "Seeding ARS orderbook around $(ARS_RATE_BASE) ARS/USDC"; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(CREATOR_ALIAS)" CREATOR="$$CREATOR_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=0 FROM_CRYPTO=true AMOUNT=50000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)-10))" DURATION_SECS=900; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(FILLER_ALIAS)" CREATOR="$$FILLER_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=1 FROM_CRYPTO=false AMOUNT=100000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)-7))" DURATION_SECS=1800; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(CREATOR_ALIAS)" CREATOR="$$CREATOR_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=2 FROM_CRYPTO=true AMOUNT=250000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)-5))" DURATION_SECS=3600; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(FILLER_ALIAS)" CREATOR="$$FILLER_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=0 FROM_CRYPTO=false AMOUNT=300000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)-2))" DURATION_SECS=7200; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(CREATOR_ALIAS)" CREATOR="$$CREATOR_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=1 FROM_CRYPTO=true AMOUNT=750000000 EXCHANGE_RATE="$(ARS_RATE_BASE)" DURATION_SECS=10800; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(FILLER_ALIAS)" CREATOR="$$FILLER_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=2 FROM_CRYPTO=false AMOUNT=1200000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)+2))" DURATION_SECS=1800; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(CREATOR_ALIAS)" CREATOR="$$CREATOR_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=0 FROM_CRYPTO=true AMOUNT=2000000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)+5))" DURATION_SECS=3600; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(FILLER_ALIAS)" CREATOR="$$FILLER_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=1 FROM_CRYPTO=false AMOUNT=150000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)+7))" DURATION_SECS=900; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(CREATOR_ALIAS)" CREATOR="$$CREATOR_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=2 FROM_CRYPTO=true AMOUNT=900000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)+10))" DURATION_SECS=1800; \
+	$(MAKE) --no-print-directory p2p-create-order NETWORK="$(NETWORK)" SOURCE="$(FILLER_ALIAS)" CREATOR="$$FILLER_ADDR" FIAT_CURRENCY_CODE="$(ARS_FIAT_CODE)" PAYMENT_METHOD_CODE=0 FROM_CRYPTO=false AMOUNT=400000000 EXCHANGE_RATE="$$(($(ARS_RATE_BASE)+12))" DURATION_SECS=7200; \
+	echo "Seeded 10 orders."
 
 run-simple-p2p-flow: check-stellar check-wallets-p2p
 	@../../scripts/run_simple_p2p_flow.sh

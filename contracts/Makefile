@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 
 NETWORK ?= testnet
+SOURCE ?= admin
 ADMIN_ALIAS ?= admin
 CONTRACTOR_ALIAS ?= contractor
 FREELANCER_ALIAS ?= freelancer
@@ -8,8 +9,10 @@ CREATOR_ALIAS ?= creator
 FILLER_ALIAS ?= filler
 ASSET_CODE ?= USDC
 ASSET_ISSUER ?= GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+P2P_ALIAS ?= p2p
+ARS_RATE_BASE ?= 1475
 
-.PHONY: help check-testnet wallets-trustline wallets-trustline-escrow wallets-trustline-p2p wallets-bootstrap wallets-bootstrap-escrow wallets-bootstrap-p2p escrow-build escrow-install escrow-deploy escrow-build-payload escrow-init escrow-get escrow-flow p2p-build p2p-install p2p-deploy p2p-init p2p-config p2p-create-order p2p-get-order p2p-flow clean-artifacts
+.PHONY: help check-testnet wallets-trustline wallets-trustline-escrow wallets-trustline-p2p wallets-bootstrap wallets-bootstrap-escrow wallets-bootstrap-p2p p2p-wallet-setup escrow-build escrow-install escrow-deploy escrow-build-payload escrow-init escrow-get escrow-flow p2p-build p2p-install p2p-deploy p2p-init p2p-config p2p-create-order p2p-get-order p2p-seed-orders-small p2p-seed-orders p2p-quickstart p2p-flow clean-artifacts
 
 define ensure_wallet
 	@if stellar keys address "$(1)" >/dev/null 2>&1; then \
@@ -57,6 +60,10 @@ help:
 	@echo "  make p2p-deploy NETWORK=testnet SOURCE=admin"
 	@echo "  make p2p-init NETWORK=testnet SOURCE=admin ADMIN=G... DISPUTE_RESOLVER=G... PAUSER=G... TOKEN_CONTRACT_ID=C..."
 	@echo "  make p2p-config NETWORK=testnet SOURCE=admin"
+	@echo "  make p2p-seed-orders-small NETWORK=testnet"
+	@echo "  make p2p-seed-orders NETWORK=testnet"
+	@echo "  make p2p-wallet-setup NETWORK=testnet"
+	@echo "  make p2p-quickstart NETWORK=testnet"
 	@echo "  make p2p-flow"
 
 check-testnet:
@@ -143,6 +150,22 @@ p2p-create-order:
 
 p2p-get-order:
 	@$(MAKE) -C contracts/p2p p2p-get-order
+
+p2p-seed-orders-small:
+	@$(MAKE) -C contracts/p2p p2p-seed-orders-small
+
+p2p-seed-orders:
+	@$(MAKE) -C contracts/p2p p2p-seed-orders
+
+p2p-wallet-setup: check-testnet
+	@$(MAKE) wallets-bootstrap-p2p NETWORK="$(NETWORK)" ASSET_CODE="$(ASSET_CODE)" ASSET_ISSUER="$(ASSET_ISSUER)"
+
+p2p-quickstart: check-testnet
+	@$(MAKE) p2p-build NETWORK="$(NETWORK)"
+	@$(MAKE) p2p-install NETWORK="$(NETWORK)" SOURCE="$(SOURCE)"
+	@$(MAKE) p2p-deploy NETWORK="$(NETWORK)" SOURCE="$(SOURCE)" P2P_ALIAS="$(P2P_ALIAS)"
+	@$(MAKE) p2p-init NETWORK="$(NETWORK)" SOURCE="$(SOURCE)" P2P_ALIAS="$(P2P_ALIAS)"
+	@$(MAKE) p2p-seed-orders NETWORK="$(NETWORK)" P2P_ALIAS="$(P2P_ALIAS)" ARS_RATE_BASE="$(ARS_RATE_BASE)"
 
 p2p-flow:
 	@$(MAKE) -C contracts/p2p run-simple-p2p-flow

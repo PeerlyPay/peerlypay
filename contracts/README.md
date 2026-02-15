@@ -48,6 +48,7 @@ It enables trustless payments via smart contracts, securing funds in escrow unti
 
 ## Contents
 
+- [P2P Fastest Path (wallets + deploy + seed)](#p2p-fastest-path-wallets--deploy--seed)
 - [Installing Rust](#installing-rust)
 - [Install the Stellar CLI](#install-stellar-cli)
 - [Configuring the CLI for Testnet](#configuring-the-cli-for-testnet)
@@ -55,6 +56,21 @@ It enables trustless payments via smart contracts, securing funds in escrow unti
 - [Deploy project on Testenet](#deploy-project-on-testnet)
 - [Contracts Overview](#contracts-overview)
 - [P2P Contract](#p2p-contract)
+
+## P2P Fastest Path (wallets + deploy + seed)
+
+From `contracts/` run one command:
+
+```bash
+make p2p-quickstart NETWORK=testnet
+```
+
+Notes:
+- Defaults:
+  - `SOURCE=admin`
+  - `P2P_ALIAS=p2p`
+  - `ARS_RATE_BASE=1475`
+- Use `make p2p-seed-orders-small NETWORK=testnet` for a smaller seed.
 
 ## Installing Rust
 
