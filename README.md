@@ -44,7 +44,53 @@ We built PeerlyPay for **remote workers, freelancers, and digital nomads** in em
 * **Bridge:** Custom Proxy Contract & Relayer
 * Locks funds on Stellar to trigger arbitration on Base, then relays the ruling back.
 
+## How to Run It
 
+### Smart Contract
+
+1. **Install the Stellar CLI**
+
+   Follow the official instructions: https://developers.stellar.org/docs/tools/cli/install-cli
+
+2. **Navigate to the contracts directory**
+
+   ```bash
+   cd contracts
+   ```
+
+3. **Create or import a Stellar account**
+
+   ```bash
+   stellar keys generate [name] --network testnet --fund
+   ```
+
+4. **Build the contract**
+
+   ```bash
+   stellar contract build
+   ```
+
+5. **Deploy the contract**
+
+   ```bash
+   stellar contract deploy \
+     --wasm target/wasm32v1-none/release/p2p.wasm \
+     --source-account [name] \
+     --network testnet \
+     --alias p2p
+   ```
+
+### Frontend
+
+1. Complete the smart contract deployment steps above.
+2. Get a Crossmint API key from https://www.crossmint.com/.
+3. Copy `.env.example` to `.env` and fill in the required variables (contract address, API keys, etc.).
+4. Install dependencies and start the dev server:
+
+   ```bash
+   pnpm install
+   pnpm run dev
+   ```
 
 ## How It Works
 
