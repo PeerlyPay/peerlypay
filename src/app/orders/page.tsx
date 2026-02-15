@@ -291,9 +291,9 @@ function TradeDetailSheet({
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(trade.txnId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
+      // clipboard unavailable
+    } finally {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }

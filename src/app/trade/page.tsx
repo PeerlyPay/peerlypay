@@ -1,7 +1,18 @@
-'use client';
+"use client";
 
-import QuickTradeInput from '@/components/QuickTradeInput';
+import { Suspense } from "react";
+import QuickTradeInput from "@/components/QuickTradeInput";
 
 export default function TradePage() {
-  return <QuickTradeInput />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          Cargando...
+        </div>
+      }
+    >
+      <QuickTradeInput />
+    </Suspense>
+  );
 }

@@ -37,9 +37,8 @@ function PaymentContent() {
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(MOCK_PAYMENT.cbu);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
+    } finally {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
