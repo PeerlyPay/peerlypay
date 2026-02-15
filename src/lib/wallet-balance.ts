@@ -5,6 +5,7 @@ type WalletTokenBalance = {
 };
 
 type WalletBalancesResponse = {
+  usdc?: WalletTokenBalance;
   tokens?: WalletTokenBalance[];
 };
 
@@ -36,6 +37,10 @@ export function extractUsdcBalanceFromWalletResponse(response: unknown): number 
   }
 
   const maybeResponse = response as WalletBalancesResponse;
+  if (maybeResponse.usdc) {
+    return parseAmount(maybeResponse.usdc.amount);
+  }
+
   const tokens = Array.isArray(maybeResponse.tokens) ? maybeResponse.tokens : [];
   const usdcToken = tokens.find(isUsdcToken);
 
