@@ -2,11 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ArrowLeftRight, ClipboardList, User } from 'lucide-react';
+import { Home, ClipboardList, User } from 'lucide-react';
 
 const tabs = [
   { href: '/quick-trade', icon: Home, label: 'Home' },
-  { href: '/trade', icon: ArrowLeftRight, label: 'Trade' },
   { href: '/orders', icon: ClipboardList, label: 'Orders' },
   { href: '/profile', icon: User, label: 'Profile' },
 ];

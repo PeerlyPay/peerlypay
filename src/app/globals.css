@@ -358,6 +358,32 @@
   }
 }
 
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+@keyframes fadeOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeOverlay {
+  animation: fadeOverlay 0.3s ease-out forwards;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

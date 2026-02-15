@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@crossmint/client-sdk-react-ui';
 import {
   ArrowUpFromLine,
@@ -10,10 +9,10 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { useStore } from '@/lib/store';
 import WalletModal from '@/components/WalletModal';
 import DepositModal from '@/components/DepositModal';
+import TradeDrawer from '@/components/TradeDrawer';
 
 const actions = [
   { icon: ArrowUpFromLine, label: 'Send', id: 'send' },
@@ -23,11 +22,12 @@ const actions = [
 ] as const;
 
 export default function QuickActions() {
-  const router = useRouter();
   const { user, disconnectWallet } = useStore();
   const { logout } = useAuth();
   const [walletOpen, setWalletOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
+  const [tradeOpen, setTradeOpen] = useState(false);
+  const [tradeMode, setTradeMode] = useState<'buy' | 'sell'>('buy');
   const walletAddress = user.walletAddress ?? '';
 
   const handleDisconnect = async () => {
@@ -47,10 +47,12 @@ export default function QuickActions() {
         setDepositOpen(true);
         break;
       case 'buy':
-        router.push('/trade?mode=buy');
+        setTradeMode('buy');
+        setTradeOpen(true);
         break;
       case 'sell':
-        router.push('/trade?mode=sell');
+        setTradeMode('sell');
+        setTradeOpen(true);
         break;
       default:
         toast.info(`${id.charAt(0).toUpperCase() + id.slice(1)} coming soon`);
@@ -85,6 +87,12 @@ export default function QuickActions() {
         isOpen={depositOpen}
         onClose={() => setDepositOpen(false)}
         walletAddress={walletAddress}
+      />
+
+      <TradeDrawer
+        open={tradeOpen}
+        onOpenChange={setTradeOpen}
+        mode={tradeMode}
       />
     </>
   );

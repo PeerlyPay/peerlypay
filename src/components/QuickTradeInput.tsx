@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Delete,
   AlertCircle,
@@ -88,12 +88,17 @@ function Numpad({ onKey, disabled }: { onKey: (key: string) => void; disabled?: 
 }
 
 // ─── Main Component ───────────────────────────────
-export default function QuickTradeInput() {
+interface QuickTradeInputProps {
+  initialMode?: TradeMode;
+  onClose?: () => void;
+  showToggle?: boolean;
+}
+
+export default function QuickTradeInput({ initialMode, onClose, showToggle = true }: QuickTradeInputProps = {}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, orders } = useStore();
 
-  const [mode, setMode] = useState<TradeMode>('buy');
+  const [mode, setMode] = useState<TradeMode>(initialMode ?? 'buy');
   const [inputValue, setInputValue] = useState('');
   const [inputCurrency, setInputCurrency] = useState<InputCurrency>('usdc');
   const [estimate, setEstimate] = useState<QuickTradeEstimate | null>(null);
@@ -217,39 +222,45 @@ export default function QuickTradeInput() {
 
   // ─── Render ─────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex flex-col h-dvh bg-white">
+    <div className={onClose ? "flex flex-col h-full bg-white" : "fixed inset-0 z-50 flex flex-col h-dvh bg-white"}>
       {/* ─── Minimal header ─── */}
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => onClose ? onClose() : router.back()}
           className="flex items-center justify-center size-10 -ml-2 rounded-full active:bg-gray-100 transition-colors"
         >
           <ArrowLeft className="size-5 text-gray-800" strokeWidth={2} />
         </button>
 
-        <div className="bg-slate-100 flex items-center p-[5px] rounded-md">
-          <button
-            type="button"
-            onClick={() => setMode('buy')}
-            className={cn(
-              'py-1.5 px-4 rounded-[3px] text-sm font-medium transition-colors',
-              mode === 'buy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-700'
-            )}
-          >
-            Buy
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('sell')}
-            className={cn(
-              'py-1.5 px-4 rounded-[3px] text-sm font-medium transition-colors',
-              mode === 'sell' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-700'
-            )}
-          >
-            Sell
-          </button>
-        </div>
+        {showToggle ? (
+          <div className="bg-slate-100 flex items-center p-[5px] rounded-md">
+            <button
+              type="button"
+              onClick={() => setMode('buy')}
+              className={cn(
+                'py-1.5 px-4 rounded-[3px] text-sm font-medium transition-colors',
+                mode === 'buy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-700'
+              )}
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('sell')}
+              className={cn(
+                'py-1.5 px-4 rounded-[3px] text-sm font-medium transition-colors',
+                mode === 'sell' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-700'
+              )}
+            >
+              Sell
+            </button>
+          </div>
+        ) : (
+          <span className="font-[family-name:var(--font-space-grotesk)] text-[15px] font-semibold text-gray-900">
+            {mode === 'buy' ? 'Buy USDC' : 'Sell USDC'}
+          </span>
+        )}
 
         <button
           type="button"
