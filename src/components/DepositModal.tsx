@@ -4,6 +4,13 @@ import { useState } from 'react';
 import { X, Copy, Check, AlertTriangle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 
 interface DepositModalProps {
   isOpen: boolean;
@@ -17,8 +24,6 @@ export default function DepositModal({
   walletAddress,
 }: DepositModalProps) {
   const [copied, setCopied] = useState(false);
-
-  if (!isOpen) return null;
 
   // Full address for QR and copy (in production this would be the full Stellar address)
   const fullAddress = walletAddress || 'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOUJ3NBNE5P4XXXY';
@@ -40,16 +45,13 @@ export default function DepositModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} direction="bottom">
+      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 max-h-[90dvh] overflow-y-auto rounded-t-3xl border-gray-200 bg-white p-0">
+        <DrawerHeader className="sr-only">
+          <DrawerTitle>Deposit USDC</DrawerTitle>
+          <DrawerDescription>Receive USDC by sharing your Stellar wallet address.</DrawerDescription>
+        </DrawerHeader>
 
-      {/* Modal */}
-      <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300">
-        {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-900 font-[family-name:var(--font-space-grotesk)]">
             Deposit USDC
@@ -64,14 +66,11 @@ export default function DepositModal({
           </button>
         </div>
 
-        {/* Content */}
         <div className="p-5 space-y-6">
-          {/* Instruction */}
           <p className="text-center text-gray-600">
             Send USDC to this address
           </p>
 
-          {/* QR Code */}
           <div className="flex justify-center">
             <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
               <QRCodeSVG
@@ -84,7 +83,6 @@ export default function DepositModal({
             </div>
           </div>
 
-          {/* Address with copy button */}
           <div className="bg-gray-50 rounded-xl p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
               Your wallet address
@@ -117,23 +115,22 @@ export default function DepositModal({
             </div>
           </div>
 
-          {/* Warning box */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-fuchsia-600" />
               <div>
-                <p className="font-semibold text-amber-800 mb-2">Important</p>
-                <ul className="text-sm text-amber-700 space-y-1.5">
+                <p className="mb-2 font-semibold text-fuchsia-800">Important</p>
+                <ul className="space-y-1.5 text-sm text-fuchsia-700">
                   <li className="flex items-start gap-2">
-                    <span className="text-amber-500">•</span>
+                    <span className="text-fuchsia-500">•</span>
                     Only send USDC on Stellar network
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-amber-500">•</span>
+                    <span className="text-fuchsia-500">•</span>
                     Sending other tokens will result in permanent loss
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-amber-500">•</span>
+                    <span className="text-fuchsia-500">•</span>
                     Minimum deposit: 1 USDC
                   </li>
                 </ul>
@@ -141,7 +138,6 @@ export default function DepositModal({
             </div>
           </div>
 
-          {/* Done button */}
           <Button
             onClick={onClose}
             className="w-full h-12 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-semibold transition-colors"
@@ -149,7 +145,7 @@ export default function DepositModal({
             Done
           </Button>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

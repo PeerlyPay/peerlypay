@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth, useWallet } from "@crossmint/client-sdk-react-ui";
 import { toast } from "sonner";
 import {
@@ -13,14 +13,10 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-
-function shortenAddress(address: string): string {
-  if (address.length <= 12) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
+import { fetchWalletUsdcBalance } from "@/lib/wallet-balance";
 
 export default function WalletButton() {
-  const { user, connectWallet, disconnectWallet, setWalletStatus } = useStore();
+  const { user, connectWallet, disconnectWallet, setWalletStatus, setBalance } = useStore();
   const { login, logout, status } = useAuth();
   const { wallet } = useWallet();
   const { isConnected, walletAddress, balance } = user;
@@ -49,6 +45,31 @@ export default function WalletButton() {
       disconnectWallet();
     }
   }, [connectWallet, disconnectWallet, status, wallet?.address, wallet?.owner]);
+
+  const refreshWalletBalance = useCallback(async () => {
+    if (!wallet?.address || status === "logged-out") {
+      return;
+    }
+
+    try {
+      const usdc = await fetchWalletUsdcBalance(wallet);
+      setBalance(usdc);
+    } catch (error) {
+      console.error("Failed to fetch wallet balance", error);
+    }
+  }, [setBalance, status, wallet]);
+
+  useEffect(() => {
+    void refreshWalletBalance();
+  }, [refreshWalletBalance]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    void refreshWalletBalance();
+  }, [isOpen, refreshWalletBalance]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -187,7 +208,7 @@ export default function WalletButton() {
           {/* Balance section */}
           <div className="border-b border-gray-100 px-4 py-4">
             <p className="font-sans text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-              Balance disponible
+              Balance available
             </p>
             <p className="mt-1 font-display text-2xl font-bold tracking-tight text-gray-900">
               ${formattedBalance}

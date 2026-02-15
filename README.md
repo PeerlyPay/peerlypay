@@ -129,6 +129,18 @@ cargo test
 
 ```
 
+### P2P quick setup (wallets + deploy + seed)
+
+From `contracts/`:
+
+```bash
+make p2p-wallet-setup NETWORK=testnet
+
+make p2p-quickstart NETWORK=testnet
+```
+
+`p2p-wallet-setup` creates aliases, funds XLM, and sets trustlines. Then fund those wallets with USDC (or your selected token) before trading.
+
 
 
 ## Future Roadmap

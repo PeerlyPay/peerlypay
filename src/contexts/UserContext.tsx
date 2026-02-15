@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 export interface User {
   id: string;
-  walletAddress: string;
+  walletAddress: string | null;
   createdAt: Date;
 }
 
@@ -26,19 +26,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(USER_STORAGE_KEY);
       if (stored) {
         setUser(JSON.parse(stored));
-      } else {
-        // Auto-create user on first visit
-        const newUser: User = {
-          id: crypto.randomUUID(),
-          walletAddress: 'GDQP2KPQGKIHYJGXNUIYOMHARUARCA7DJT5FO2FFOOUJ3NBNE5P4XXXY',
-          createdAt: new Date(),
-        };
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
-        setUser(newUser);
       }
     } catch (error) {
       console.error('Error loading user:', error);
       localStorage.removeItem(USER_STORAGE_KEY);
+      setUser(null);
     } finally {
       setLoading(false);
     }

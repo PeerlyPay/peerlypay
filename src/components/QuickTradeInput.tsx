@@ -1,20 +1,20 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Delete,
-  Loader2,
-  Shield,
   AlertCircle,
+  ArrowLeft,
+  HelpCircle,
+  ArrowUpDown,
   ChevronRight,
-  TrendingDown,
-  TrendingUp,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useStore } from "@/lib/store";
-import { estimateQuickTrade } from "@/lib/match-order";
-import type { QuickTradeEstimate } from "@/types";
+  CircleDollarSign,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useStore } from '@/lib/store';
+import { estimateQuickTrade } from '@/lib/match-order';
+import type { QuickTradeEstimate } from '@/types';
 
 /** Transaction limit in USDC */
 const USDC_LIMIT = 500;
@@ -22,10 +22,15 @@ const USDC_LIMIT = 500;
 /** Debounce delay for rate calculation (ms) */
 const DEBOUNCE_MS = 500;
 
-type TradeMode = "sell" | "buy";
+/** Fallback rate until first estimation */
+const DEFAULT_RATE = 1200;
 
-function formatFiatCompact(value: number): string {
-  return value.toLocaleString("es-AR", {
+type TradeMode = 'sell' | 'buy';
+type InputCurrency = 'ars' | 'usdc';
+
+function formatArs(value: number): string {
+  if (value === 0) return '0';
+  return value.toLocaleString('es-AR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
@@ -38,32 +43,26 @@ function formatUsdc(value: number): string {
   });
 }
 
-// ============================================
-// NUMERIC KEYPAD
-// ============================================
-const KEYPAD_KEYS = [
-  "1",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  ".",
-  "0",
-  "delete",
-] as const;
-
-interface NumpadProps {
-  onKey: (key: string) => void;
-  disabled?: boolean;
+function getAmountSize(text: string): string {
+  const len = text.length;
+  if (len <= 3) return 'text-[80px] leading-none';
+  if (len <= 5) return 'text-[60px] leading-none';
+  if (len <= 7) return 'text-[48px] leading-none';
+  if (len <= 9) return 'text-[36px] leading-none';
+  return 'text-[28px] leading-none';
 }
 
-function Numpad({ onKey, disabled }: NumpadProps) {
+// ─── Numeric Keypad ───────────────────────────────
+const KEYPAD_KEYS = [
+  '1', '2', '3',
+  '4', '5', '6',
+  '7', '8', '9',
+  ',', '0', 'delete',
+] as const;
+
+function Numpad({ onKey, disabled }: { onKey: (key: string) => void; disabled?: boolean }) {
   return (
-    <div className="grid grid-cols-3 gap-2 px-2">
+    <div className="grid grid-cols-3 px-6">
       {KEYPAD_KEYS.map((key) => (
         <button
           key={key}
@@ -71,16 +70,14 @@ function Numpad({ onKey, disabled }: NumpadProps) {
           disabled={disabled}
           onClick={() => onKey(key)}
           className={cn(
-            "flex items-center justify-center h-[56px] rounded-2xl transition-all active:scale-[0.95]",
-            "font-[family-name:var(--font-space-grotesk)] text-[22px] font-semibold",
-            key === "delete"
-              ? "bg-gray-100 text-gray-400 active:bg-gray-200"
-              : "bg-gray-50 text-gray-900 hover:bg-gray-100 active:bg-gray-200",
-            disabled && "opacity-40 pointer-events-none",
+            'flex items-center justify-center h-[54px] rounded-xl transition-colors active:bg-gray-50',
+            'font-[family-name:var(--font-space-grotesk)] text-[22px] font-medium select-none',
+            key === 'delete' ? 'text-gray-400' : 'text-gray-800',
+            disabled && 'opacity-40 pointer-events-none'
           )}
         >
-          {key === "delete" ? (
-            <Delete className="size-[22px]" strokeWidth={2} />
+          {key === 'delete' ? (
+            <Delete className="size-[22px]" strokeWidth={1.5} />
           ) : (
             key
           )}
@@ -90,81 +87,59 @@ function Numpad({ onKey, disabled }: NumpadProps) {
   );
 }
 
-// ============================================
-// SEGMENTED TOGGLE
-// ============================================
-interface SegmentedToggleProps {
-  mode: TradeMode;
-  onChange: (mode: TradeMode) => void;
+// ─── Main Component ───────────────────────────────
+interface QuickTradeInputProps {
+  initialMode?: TradeMode;
+  onClose?: () => void;
+  showToggle?: boolean;
 }
 
-function SegmentedToggle({ mode, onChange }: SegmentedToggleProps) {
-  return (
-    <div className="relative flex bg-gray-100 rounded-xl p-1 w-[200px]">
-      {/* Sliding background */}
-      <div
-        className={cn(
-          "absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-fuchsia-500 shadow-sm transition-transform duration-300 ease-out",
-          mode === "buy" && "translate-x-[calc(100%+4px)]",
-        )}
-      />
-      <button
-        type="button"
-        onClick={() => onChange("sell")}
-        className={cn(
-          "relative z-10 flex-1 py-2 text-sm font-semibold font-[family-name:var(--font-space-grotesk)] rounded-lg transition-colors duration-200",
-          mode === "sell" ? "text-white" : "text-gray-500",
-        )}
-      >
-        Vender
-      </button>
-      <button
-        type="button"
-        onClick={() => onChange("buy")}
-        className={cn(
-          "relative z-10 flex-1 py-2 text-sm font-semibold font-[family-name:var(--font-space-grotesk)] rounded-lg transition-colors duration-200",
-          mode === "buy" ? "text-white" : "text-gray-500",
-        )}
-      >
-        Comprar
-      </button>
-    </div>
-  );
-}
-
-// ============================================
-// MAIN QUICK TRADE COMPONENT
-// ============================================
-export default function QuickTradeInput() {
+export default function QuickTradeInput({ initialMode, onClose, showToggle = true }: QuickTradeInputProps = {}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, orders } = useStore();
-  const initialMode = searchParams.get("mode") === "buy" ? "buy" : "sell";
-  const [mode, setMode] = useState<TradeMode>(initialMode);
-  const [inputValue, setInputValue] = useState("");
+
+  const [mode, setMode] = useState<TradeMode>(initialMode ?? 'buy');
+  const [inputValue, setInputValue] = useState('');
+  const [inputCurrency, setInputCurrency] = useState<InputCurrency>('usdc');
   const [estimate, setEstimate] = useState<QuickTradeEstimate | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentRate, setCurrentRate] = useState<number>(DEFAULT_RATE);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const rateRef = useRef<number>(DEFAULT_RATE);
 
-  const numericValue = parseFloat(inputValue) || 0;
-  const isOverLimit = numericValue > USDC_LIMIT;
-  const hasValidAmount = numericValue > 0 && !isOverLimit;
+  // Parse input (comma → dot for float)
+  const numericValue = parseFloat(inputValue.replace(',', '.')) || 0;
 
-  // Reset when mode changes
-  const handleModeChange = useCallback((newMode: TradeMode) => {
-    setMode(newMode);
-    setInputValue("");
-    setEstimate(null);
-    setError(null);
-  }, []);
+  // Derive USDC amount for limit check / display
+  const usdcAmount = inputCurrency === 'usdc'
+    ? numericValue
+    : currentRate > 0 ? numericValue / currentRate : 0;
 
-  // Debounced estimate calculation — always input USDC
+  const isOverLimit = usdcAmount > USDC_LIMIT;
+  const hasEnoughBalance = mode === 'buy' || usdcAmount <= user.balance.usdc;
+  const hasValidAmount = numericValue > 0 && !isOverLimit && hasEnoughBalance;
+
+  // Fetch initial rate on mount / mode change
+  useEffect(() => {
+    const result = estimateQuickTrade(orders, 1, mode);
+    if (result) {
+      rateRef.current = result.rate;
+      setCurrentRate(result.rate);
+    }
+  }, [orders, mode]);
+
+  // Debounced estimation — uses rateRef to avoid cascading re-renders
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     setError(null);
 
-    if (numericValue <= 0) {
+    const usdcAmt = inputCurrency === 'usdc'
+      ? numericValue
+      : rateRef.current > 0 ? numericValue / rateRef.current : 0;
+
+    if (usdcAmt <= 0) {
       setEstimate(null);
       setIsCalculating(false);
       return;
@@ -173,13 +148,15 @@ export default function QuickTradeInput() {
     setIsCalculating(true);
 
     debounceRef.current = setTimeout(() => {
-      const result = estimateQuickTrade(orders, numericValue, mode);
+      const result = estimateQuickTrade(orders, usdcAmt, mode);
       if (result) {
         setEstimate(result);
+        rateRef.current = result.rate;
+        setCurrentRate(result.rate);
         setError(null);
       } else {
         setEstimate(null);
-        setError("No hay órdenes disponibles para este monto");
+        setError('No orders available');
       }
       setIsCalculating(false);
     }, DEBOUNCE_MS);
@@ -187,9 +164,9 @@ export default function QuickTradeInput() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [numericValue, mode, orders]);
+  }, [numericValue, inputCurrency, mode, orders]);
 
-  // Handle numpad key press
+  // Numpad input handler
   const handleKey = useCallback((key: string) => {
     if (key === "delete") {
       setInputValue((prev) => prev.slice(0, -1));
@@ -197,230 +174,199 @@ export default function QuickTradeInput() {
     }
 
     setInputValue((prev) => {
-      if (key === "." && prev.includes(".")) return prev;
-      if (prev.includes(".") && prev.split(".")[1].length >= 2) return prev;
-      if (prev.replace(".", "").length >= 8) return prev;
-      if (key === "." && prev === "") return "0.";
-      if (prev === "0" && key !== ".") return key;
+      if (key === ',' && prev.includes(',')) return prev;
+      if (prev.includes(',') && prev.split(',')[1].length >= 2) return prev;
+      if (prev.replace(',', '').length >= 10) return prev;
+      if (key === ',' && prev === '') return '0,';
+      if (prev === '0' && key !== ',') return key;
       return prev + key;
     });
   }, []);
 
-  // Set max amount
-  const handleMax = useCallback(() => {
-    if (mode === "sell") {
-      const maxUsdc = Math.min(user.balance.usdc, USDC_LIMIT);
-      setInputValue(maxUsdc > 0 ? String(maxUsdc) : String(USDC_LIMIT));
-    } else {
-      setInputValue(String(USDC_LIMIT));
+  // Swap between ARS / USDC input
+  const handleSwapCurrency = useCallback(() => {
+    const next: InputCurrency = inputCurrency === 'usdc' ? 'ars' : 'usdc';
+
+    if (numericValue > 0 && currentRate > 0) {
+      if (inputCurrency === 'usdc') {
+        const arsValue = Math.round(numericValue * currentRate);
+        setInputValue(String(arsValue));
+      } else {
+        const usdcValue = (numericValue / currentRate).toFixed(2);
+        setInputValue(usdcValue.replace('.', ','));
+      }
     }
-  }, [mode, user.balance.usdc]);
 
-  // Clear input
-  const handleClear = useCallback(() => {
-    setInputValue("");
-    setEstimate(null);
-    setError(null);
-  }, []);
+    setInputCurrency(next);
+  }, [inputCurrency, numericValue, currentRate]);
 
-  // Navigate to confirmation page
+  // Navigate to confirmation
   const handleContinue = useCallback(() => {
     if (!hasValidAmount || !estimate) return;
-    router.push(
-      `/trade/confirm?amount=${numericValue.toFixed(2)}&mode=${mode}`,
-    );
-  }, [hasValidAmount, numericValue, mode, estimate, router]);
+    router.push(`/trade/confirm?amount=${usdcAmount.toFixed(2)}&mode=${mode}`);
+  }, [hasValidAmount, usdcAmount, mode, estimate, router]);
 
-  // ============================================
-  // DERIVED DISPLAY VALUES
-  // ============================================
-  const displayPrimary = inputValue || "0";
+  // ─── Display values ─────────────────────────────
+  const displayAmount = inputValue || '0';
+  const displayCurrency = inputCurrency === 'usdc' ? 'USDC' : 'ARS';
 
-  const displaySecondary =
-    estimate && !isCalculating ? formatFiatCompact(estimate.total) : "0";
+  const conversionText = (() => {
+    if (isCalculating && numericValue > 0) return 'Calculando...';
+    if (!estimate || numericValue <= 0) {
+      return inputCurrency === 'usdc' ? '0 ARS' : '0,00 USDC';
+    }
+    return inputCurrency === 'usdc'
+      ? `${formatArs(estimate.total)} ARS`
+      : `${formatUsdc(usdcAmount)} USDC`;
+  })();
 
-  const isSell = mode === "sell";
-
-  // ============================================
-  // FULLSCREEN LIGHT UI
-  // ============================================
+  // ─── Render ─────────────────────────────────────
   return (
-    <div className="flex min-h-[calc(100dvh-11rem)] w-full flex-col bg-white">
-      {/* ============================================
-          TOP BAR: toggle
-          ============================================ */}
-      <div className="flex items-center justify-center px-4 pt-3 pb-1">
-        <SegmentedToggle mode={mode} onChange={handleModeChange} />
+    <div className={onClose ? "flex flex-col h-full bg-white" : "fixed inset-0 z-50 flex flex-col h-dvh bg-white"}>
+      {/* ─── Minimal header ─── */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+        <button
+          type="button"
+          onClick={() => onClose ? onClose() : router.back()}
+          className="flex items-center justify-center size-10 -ml-2 rounded-full active:bg-gray-100 transition-colors"
+        >
+          <ArrowLeft className="size-5 text-gray-800" strokeWidth={2} />
+        </button>
+
+        {showToggle ? (
+          <div className="bg-slate-100 flex items-center p-[5px] rounded-md">
+            <button
+              type="button"
+              onClick={() => setMode('buy')}
+              className={cn(
+                'py-1.5 px-4 rounded-[3px] text-sm font-medium transition-colors',
+                mode === 'buy' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-700'
+              )}
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('sell')}
+              className={cn(
+                'py-1.5 px-4 rounded-[3px] text-sm font-medium transition-colors',
+                mode === 'sell' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-700'
+              )}
+            >
+              Sell
+            </button>
+          </div>
+        ) : (
+          <span className="font-[family-name:var(--font-space-grotesk)] text-[15px] font-semibold text-gray-900">
+            {mode === 'buy' ? 'Buy USDC' : 'Sell USDC'}
+          </span>
+        )}
+
+        <button
+          type="button"
+          className="flex items-center justify-center size-10 -mr-2 rounded-full active:bg-gray-100 transition-colors"
+        >
+          <HelpCircle className="size-5 text-gray-400" strokeWidth={1.5} />
+        </button>
       </div>
 
-      {/* ============================================
-          TITLE / SUBTITLE
-          ============================================ */}
-      <div className="text-center px-6 pt-3 pb-1">
-        <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-gray-900">
-          {isSell
-            ? "¿Cuánto USDC querés vender?"
-            : "¿Cuánto USDC querés comprar?"}
-        </h2>
-        <p className="text-sm text-gray-500 mt-0.5">
-          {isSell ? "Recibirás ARS al instante" : "Pagarás con ARS"}
-        </p>
-      </div>
-
-      {/* ============================================
-          AMOUNT DISPLAY AREA
-          ============================================ */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-1 min-h-0">
-        {/* Primary USDC amount */}
+      {/* ─── Amount display area ─── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 min-h-0">
+        {/* Giant amount */}
         <div className="flex items-baseline gap-2">
           <span
             className={cn(
-              "font-[family-name:var(--font-jetbrains-mono)] font-bold tracking-tight tabular-nums text-gray-900 transition-all",
-              displayPrimary.length > 8
-                ? "text-3xl"
-                : displayPrimary.length > 5
-                  ? "text-[44px] leading-none"
-                  : "text-[56px] leading-none",
+              'font-[family-name:var(--font-space-grotesk)] font-bold tracking-tight tabular-nums text-gray-900 transition-all',
+              getAmountSize(displayAmount)
             )}
           >
-            {displayPrimary}
+            {displayAmount}
           </span>
-          <span className="font-[family-name:var(--font-space-grotesk)] text-xl font-semibold text-gray-300 self-end mb-1.5">
+          <span
+            className={cn(
+              'font-[family-name:var(--font-space-grotesk)] font-medium text-gray-300 transition-all',
+              displayAmount.length > 7 ? 'text-base' : 'text-xl'
+            )}
+          >
+            {displayCurrency}
+          </span>
+        </div>
+
+        {/* Swap / conversion link */}
+        <button
+          type="button"
+          onClick={handleSwapCurrency}
+          className="flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full transition-colors hover:bg-blue-50/60 active:scale-95"
+        >
+          <ArrowUpDown className="size-3.5 text-blue-600" strokeWidth={2} />
+          <span
+            className={cn(
+              'font-[family-name:var(--font-jetbrains-mono)] text-sm font-medium tabular-nums',
+              isCalculating ? 'text-gray-400' : 'text-blue-600'
+            )}
+          >
+            {conversionText}
+          </span>
+        </button>
+
+        {/* Asset + balance row */}
+        <div className="flex items-center gap-3 mt-8 w-full max-w-[320px] px-4 py-3 rounded-2xl bg-gray-50/80">
+          <div className="flex items-center justify-center size-8 rounded-full bg-blue-50">
+            <CircleDollarSign className="size-4 text-blue-500" strokeWidth={1.5} />
+          </div>
+          <span className="font-[family-name:var(--font-space-grotesk)] text-[15px] font-semibold text-gray-900">
             USDC
           </span>
+          <span className="ml-auto font-[family-name:var(--font-dm-sans)] text-[13px] text-gray-400">
+            {formatUsdc(user.balance.usdc)} available
+          </span>
+          <ChevronRight className="size-4 text-gray-300 -mr-1" />
         </div>
 
-        {/* Secondary ARS amount */}
-        <div className="flex items-center gap-1.5 h-8 mt-2">
-          {isCalculating && numericValue > 0 ? (
-            <div className="flex items-center gap-2 text-gray-400">
-              <Loader2 className="size-4 animate-spin" />
-              <span className="text-body-sm">Calculando...</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {isSell ? (
-                <TrendingDown
-                  className={cn(
-                    "size-4",
-                    numericValue > 0 && estimate
-                      ? "text-emerald-500"
-                      : "text-gray-300",
-                  )}
-                />
-              ) : (
-                <TrendingUp
-                  className={cn(
-                    "size-4",
-                    numericValue > 0 && estimate
-                      ? "text-blue-500"
-                      : "text-gray-300",
-                  )}
-                />
-              )}
-              <span
-                className={cn(
-                  "font-[family-name:var(--font-jetbrains-mono)] text-lg font-semibold tabular-nums",
-                  numericValue > 0 && estimate
-                    ? isSell
-                      ? "text-emerald-600"
-                      : "text-blue-600"
-                    : "text-gray-400",
-                )}
-              >
-                ≈ ${displaySecondary} ARS
-              </span>
-              <span className="font-[family-name:var(--font-space-grotesk)] text-xs font-medium text-gray-400">
-                {isSell ? "recibirás" : "pagarás"}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Rate chip */}
-        {estimate && !isCalculating && (
-          <div className="mt-2 px-3.5 py-1.5 rounded-full bg-gray-50 border border-gray-200">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-gray-500 tabular-nums">
-              1 USDC = {formatFiatCompact(estimate.rate)} ARS
+        {/* Error messages */}
+        {!hasEnoughBalance && numericValue > 0 && (
+          <div className="mt-4 flex items-center gap-2 w-full max-w-[320px] px-4 py-2.5 rounded-xl bg-red-50 border border-red-300">
+            <AlertCircle className="size-4 text-red-800 shrink-0" />
+            <span className="text-xs text-red-800">
+              Insufficient balance. You need {formatUsdc(usdcAmount)} USDC but only have {formatUsdc(user.balance.usdc)} USDC.
             </span>
           </div>
         )}
-
-        {/* Error / over limit */}
-        {isOverLimit && (
-          <p className="mt-2 flex items-center gap-1.5 text-body-sm text-red-600 bg-red-50 px-3 py-1.5 rounded-lg">
-            <AlertCircle className="size-3.5 shrink-0" />
-            Excede el límite de {USDC_LIMIT} USDC
-          </p>
+        {isOverLimit && hasEnoughBalance && (
+          <div className="mt-4 flex items-center gap-2 w-full max-w-[320px] px-4 py-2.5 rounded-xl bg-red-50 border border-red-300">
+            <AlertCircle className="size-4 text-red-800 shrink-0" />
+            <span className="text-xs text-red-800">
+              Exceeds the {USDC_LIMIT} USDC limit
+            </span>
+          </div>
         )}
-
-        {!isCalculating && error && !isOverLimit && (
-          <p className="mt-2 flex items-center gap-1.5 text-body-sm text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg">
+        {!isCalculating && error && !isOverLimit && hasEnoughBalance && (
+          <p className="mt-4 flex items-center gap-1.5 text-xs text-amber-500">
             <AlertCircle className="size-3.5 shrink-0" />
             {error}
           </p>
         )}
       </div>
 
-      {/* ============================================
-          BOTTOM SECTION: Limit + Actions + Keypad + CTA
-          ============================================ */}
-      <div className="px-4 pb-5 space-y-3">
-        {/* Transaction limit banner */}
-        <button
-          type="button"
-          className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center size-5 rounded-full bg-fuchsia-100">
-              <Shield className="size-3 text-fuchsia-500" />
-            </div>
-            <span className="font-[family-name:var(--font-dm-sans)] text-xs font-medium text-gray-500">
-              Límite: {USDC_LIMIT} USDC
-            </span>
-          </div>
-          <ChevronRight className="size-4 text-gray-300" />
-        </button>
-
-        {/* Máx / Limpiar actions */}
-        <div className="flex items-center justify-center gap-3">
-          <button
-            type="button"
-            onClick={handleMax}
-            className="px-4 py-1.5 rounded-full bg-gray-50 border border-gray-200 font-[family-name:var(--font-dm-sans)] text-xs font-semibold text-gray-600 hover:bg-gray-100 active:scale-95 transition-all"
-          >
-            Máx
-          </button>
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={!inputValue}
-            className={cn(
-              "px-4 py-1.5 rounded-full bg-gray-50 border border-gray-200 font-[family-name:var(--font-dm-sans)] text-xs font-semibold text-gray-600 hover:bg-gray-100 active:scale-95 transition-all",
-              !inputValue && "opacity-30 pointer-events-none",
-            )}
-          >
-            Limpiar
-          </button>
-        </div>
-
-        {/* Numpad */}
+      {/* ─── Bottom: keypad + buttons ─── */}
+      <div className="px-2 pb-5 space-y-2">
         <Numpad onKey={handleKey} />
 
-        {/* CTA Button */}
-        <button
-          type="button"
-          onClick={handleContinue}
-          disabled={!hasValidAmount || !!error}
-          className={cn(
-            "w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white transition-all active:scale-[0.98]",
-            hasValidAmount && !error
-              ? "bg-gradient-to-r from-fuchsia-500 to-purple-600 shadow-lg shadow-fuchsia-500/25 hover:opacity-90"
-              : "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none",
-          )}
-        >
-          Continuar
-        </button>
+        <div className="px-4 pt-1 pb-1">
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={!hasValidAmount || !!error}
+            className={cn(
+              'w-full h-[52px] rounded-2xl font-[family-name:var(--font-space-grotesk)] text-[15px] font-semibold text-white transition-all active:scale-[0.98]',
+              hasValidAmount && !error
+                ? 'bg-fuchsia-500 hover:bg-fuchsia-600 shadow-lg shadow-fuchsia-500/20'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+            )}
+          >
+            Continue
+          </button>
+        </div>
       </div>
     </div>
   );

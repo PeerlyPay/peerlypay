@@ -56,6 +56,8 @@ pub struct FiatPaymentSubmitted {
 pub struct FiatTransferTimeout {
     pub order_id: u64,
     pub executed_by: Address,
+    pub refunded_to: Option<Address>,
+    pub refund_amount: i128,
 }
 
 #[contractevent(topics = ["p2p_fiat_payment_confirmed"], data_format = "vec")]

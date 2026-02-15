@@ -6,7 +6,6 @@ import {
   CrossmintWalletProvider,
 } from "@crossmint/client-sdk-react-ui";
 import { UserProvider } from "@/contexts/UserContext";
-import { BalanceProvider } from "@/contexts/BalanceContext";
 import { TradeHistoryProvider } from "@/contexts/TradeHistoryContext";
 
 const apiKey = process.env.NEXT_PUBLIC_CROSSMINT_API_KEY!;
@@ -24,9 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           }}
         >
           <UserProvider>
-            <BalanceProvider>
-              <TradeHistoryProvider>{children}</TradeHistoryProvider>
-            </BalanceProvider>
+            <TradeHistoryProvider>{children}</TradeHistoryProvider>
           </UserProvider>
         </CrossmintWalletProvider>
       </CrossmintAuthProvider>

@@ -55,9 +55,9 @@ export default function MarketplaceContent() {
     // User wants to buy -> show sell orders; wants to sell -> show buy orders
     let result = orders.filter((order) => {
       if (activeTab === 'buy') {
-        return order.type === 'sell' && order.status === 'open';
+        return order.type === 'sell' && order.status === 'AwaitingFiller';
       } else {
-        return order.type === 'buy' && order.status === 'open';
+        return order.type === 'buy' && order.status === 'AwaitingFiller';
       }
     });
 

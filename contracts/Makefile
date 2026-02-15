@@ -1,167 +1,175 @@
 SHELL := /bin/bash
 
 NETWORK ?= testnet
-SOURCE ?= alice
-STELLAR ?= stellar
+SOURCE ?= admin
+ADMIN_ALIAS ?= admin
+CONTRACTOR_ALIAS ?= contractor
+FREELANCER_ALIAS ?= freelancer
+CREATOR_ALIAS ?= creator
+FILLER_ALIAS ?= filler
+ASSET_CODE ?= USDC
+ASSET_ISSUER ?= GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+P2P_ALIAS ?= p2p
+ARS_RATE_BASE ?= 1475
 
-ARTIFACTS_DIR ?= .artifacts
-NETWORK_ARTIFACTS_DIR := $(ARTIFACTS_DIR)/$(NETWORK)
+.PHONY: help check-testnet wallets-trustline wallets-trustline-escrow wallets-trustline-p2p wallets-bootstrap wallets-bootstrap-escrow wallets-bootstrap-p2p p2p-wallet-setup escrow-build escrow-install escrow-deploy escrow-build-payload escrow-init escrow-get escrow-flow p2p-build p2p-install p2p-deploy p2p-init p2p-config p2p-create-order p2p-get-order p2p-seed-orders-small p2p-seed-orders p2p-quickstart p2p-flow clean-artifacts
 
-ESCROW_WASM_PATH ?= target/wasm32v1-none/release/escrow.wasm
-ESCROW_WASM_HASH_FILE ?= $(NETWORK_ARTIFACTS_DIR)/escrow_wasm_hash.txt
-ESCROW_CONTRACT_ID_FILE ?= $(NETWORK_ARTIFACTS_DIR)/escrow_contract_id.txt
-ESCROW_PAYLOAD_FILE ?= $(NETWORK_ARTIFACTS_DIR)/escrow_init_payload.json
-
-ENGAGEMENT_ID ?=
-TITLE ?=
-DESCRIPTION ?=
-AMOUNT ?=
-PLATFORM_FEE_BPS ?=
-TOKEN_CONTRACT_ID ?=
-APPROVER ?=
-SERVICE_PROVIDER ?=
-PLATFORM_ADDRESS ?=
-RELEASE_SIGNER ?=
-DISPUTE_RESOLVER ?=
-RECEIVER ?=
-RECEIVER_MEMO ?= 0
-MILESTONES_JSON ?=
-
-define require_var
-	@if [[ -z "$(${1})" ]]; then \
-		echo "Missing required variable: ${1}"; \
-		exit 1; \
+define ensure_wallet
+	@if stellar keys address "$(1)" >/dev/null 2>&1; then \
+		echo "Alias exists: $(1)"; \
+	else \
+		echo "Creating alias: $(1)"; \
+		stellar keys generate "$(1)" --network "$(NETWORK)"; \
 	fi
+	@ADDR="$$(stellar keys address "$(1)")"; \
+	echo "Funding $$ADDR via Friendbot..."; \
+	curl -sSf "https://friendbot.stellar.org?addr=$$ADDR" >/dev/null; \
+	echo "Funded: $(1) ($$ADDR)"
 endef
 
-.PHONY: help check-tools check-stellar check-python contract-build contract-install-escrow escrow-deploy escrow-build-payload escrow-init escrow-get run-simple-escrow-flow clean-artifacts
+define ensure_trustline
+	@echo "Creating trustline for $(1): $(ASSET_CODE):$(ASSET_ISSUER)"; \
+	stellar tx new change-trust \
+		--source-account "$(1)" \
+		--line "$(ASSET_CODE):$(ASSET_ISSUER)" \
+		--network "$(NETWORK)" >/dev/null; \
+	echo "Trustline ready for $(1)"
+endef
 
 help:
-	@echo "Peerlypay Stellar escrow commands (2-step deploy + initialize)"
+	@echo "Peerlypay contracts commands"
 	@echo
-	@echo "Core flow:"
-	@echo "  make contract-build"
-	@echo "  make contract-install-escrow NETWORK=testnet SOURCE=alice"
+	@echo "Wallet bootstrap (testnet):"
+	@echo "  make wallets-bootstrap NETWORK=testnet"
+	@echo "  make wallets-bootstrap-escrow NETWORK=testnet"
+	@echo "  make wallets-bootstrap-p2p NETWORK=testnet"
+	@echo "  make wallets-trustline NETWORK=testnet"
+	@echo
+	@echo "Escrow:"
+	@echo "  make escrow-build"
+	@echo "  make escrow-install NETWORK=testnet SOURCE=alice"
 	@echo "  make escrow-deploy NETWORK=testnet SOURCE=alice"
 	@echo "  make escrow-build-payload NETWORK=testnet ..."
 	@echo "  make escrow-init NETWORK=testnet SOURCE=alice"
-	@echo
-	@echo "Helpers:"
 	@echo "  make escrow-get NETWORK=testnet SOURCE=alice"
-	@echo "  make run-simple-escrow-flow"
-	@echo "  make clean-artifacts"
+	@echo "  make escrow-flow"
+	@echo
+	@echo "P2P:"
+	@echo "  make p2p-build"
+	@echo "  make p2p-install NETWORK=testnet SOURCE=admin"
+	@echo "  make p2p-deploy NETWORK=testnet SOURCE=admin"
+	@echo "  make p2p-init NETWORK=testnet SOURCE=admin ADMIN=G... DISPUTE_RESOLVER=G... PAUSER=G... TOKEN_CONTRACT_ID=C..."
+	@echo "  make p2p-config NETWORK=testnet SOURCE=admin"
+	@echo "  make p2p-seed-orders-small NETWORK=testnet"
+	@echo "  make p2p-seed-orders NETWORK=testnet"
+	@echo "  make p2p-wallet-setup NETWORK=testnet"
+	@echo "  make p2p-quickstart NETWORK=testnet"
+	@echo "  make p2p-flow"
 
-check-tools: check-stellar check-python
-
-check-stellar:
-	@command -v $(STELLAR) >/dev/null 2>&1 || (echo "stellar CLI not found" && exit 1)
-
-check-python:
-	@command -v python3 >/dev/null 2>&1 || (echo "python3 not found" && exit 1)
-
-contract-build: check-stellar
-	@$(STELLAR) contract build
-	@if [[ ! -f "$(ESCROW_WASM_PATH)" ]]; then \
-		echo "Expected wasm not found at $(ESCROW_WASM_PATH)"; \
-		echo "Update ESCROW_WASM_PATH if your output path differs."; \
+check-testnet:
+	@if [[ "$(NETWORK)" != "testnet" ]]; then \
+		echo "Friendbot funding is only supported on testnet"; \
 		exit 1; \
 	fi
-	@echo "Built wasm: $(ESCROW_WASM_PATH)"
 
-contract-install-escrow: check-stellar
-	@mkdir -p "$(NETWORK_ARTIFACTS_DIR)"
-	@if [[ ! -f "$(ESCROW_WASM_PATH)" ]]; then \
-		echo "Wasm not found at $(ESCROW_WASM_PATH). Run make contract-build first."; \
-		exit 1; \
-	fi
-	@HASH="$$( $(STELLAR) contract install --network "$(NETWORK)" --source "$(SOURCE)" --wasm "$(ESCROW_WASM_PATH)" )"; \
-	if [[ -z "$$HASH" ]]; then \
-		echo "Failed to obtain wasm hash"; \
-		exit 1; \
-	fi; \
-	echo "$$HASH" | tee "$(ESCROW_WASM_HASH_FILE)" >/dev/null; \
-	echo "Installed escrow wasm hash: $$HASH"
+wallets-bootstrap: check-testnet
+	$(call ensure_wallet,$(ADMIN_ALIAS))
+	$(call ensure_wallet,$(CONTRACTOR_ALIAS))
+	$(call ensure_wallet,$(FREELANCER_ALIAS))
+	$(call ensure_wallet,$(CREATOR_ALIAS))
+	$(call ensure_wallet,$(FILLER_ALIAS))
+	@$(MAKE) wallets-trustline NETWORK="$(NETWORK)" ASSET_CODE="$(ASSET_CODE)" ASSET_ISSUER="$(ASSET_ISSUER)"
 
-escrow-deploy: check-stellar
-	@mkdir -p "$(NETWORK_ARTIFACTS_DIR)"
-	@WASM_HASH="$${ESCROW_WASM_HASH:-}"; \
-	if [[ -z "$$WASM_HASH" && -f "$(ESCROW_WASM_HASH_FILE)" ]]; then \
-		WASM_HASH="$$(cat "$(ESCROW_WASM_HASH_FILE)")"; \
-	fi; \
-	if [[ -z "$$WASM_HASH" ]]; then \
-		echo "Missing ESCROW_WASM_HASH and no cached hash file found at $(ESCROW_WASM_HASH_FILE)"; \
-		exit 1; \
-	fi; \
-	CONTRACT_ID="$$( $(STELLAR) contract deploy --network "$(NETWORK)" --source "$(SOURCE)" --wasm-hash "$$WASM_HASH" )"; \
-	if [[ -z "$$CONTRACT_ID" ]]; then \
-		echo "Failed to deploy escrow contract"; \
-		exit 1; \
-	fi; \
-	echo "$$CONTRACT_ID" | tee "$(ESCROW_CONTRACT_ID_FILE)" >/dev/null; \
-	echo "Deployed escrow contract id: $$CONTRACT_ID"
+wallets-bootstrap-escrow: check-testnet
+	$(call ensure_wallet,$(ADMIN_ALIAS))
+	$(call ensure_wallet,$(CONTRACTOR_ALIAS))
+	$(call ensure_wallet,$(FREELANCER_ALIAS))
+	@$(MAKE) wallets-trustline-escrow NETWORK="$(NETWORK)" ASSET_CODE="$(ASSET_CODE)" ASSET_ISSUER="$(ASSET_ISSUER)"
 
-escrow-build-payload: check-python
-	$(call require_var,ENGAGEMENT_ID)
-	$(call require_var,TITLE)
-	$(call require_var,DESCRIPTION)
-	$(call require_var,AMOUNT)
-	$(call require_var,PLATFORM_FEE_BPS)
-	$(call require_var,TOKEN_CONTRACT_ID)
-	$(call require_var,APPROVER)
-	$(call require_var,SERVICE_PROVIDER)
-	$(call require_var,PLATFORM_ADDRESS)
-	$(call require_var,RELEASE_SIGNER)
-	$(call require_var,DISPUTE_RESOLVER)
-	$(call require_var,RECEIVER)
-	@mkdir -p "$(NETWORK_ARTIFACTS_DIR)"
-	@python3 scripts/build_escrow_payload.py \
-		--engagement-id "$(ENGAGEMENT_ID)" \
-		--title "$(TITLE)" \
-		--description "$(DESCRIPTION)" \
-		--amount "$(AMOUNT)" \
-		--platform-fee-bps "$(PLATFORM_FEE_BPS)" \
-		--token-contract-id "$(TOKEN_CONTRACT_ID)" \
-		--approver "$(APPROVER)" \
-		--service-provider "$(SERVICE_PROVIDER)" \
-		--platform-address "$(PLATFORM_ADDRESS)" \
-		--release-signer "$(RELEASE_SIGNER)" \
-		--dispute-resolver "$(DISPUTE_RESOLVER)" \
-		--receiver "$(RECEIVER)" \
-		--receiver-memo "$(RECEIVER_MEMO)" \
-		--milestones-json '$(MILESTONES_JSON)' \
-		--output "$(ESCROW_PAYLOAD_FILE)"
-	@echo "Wrote payload: $(ESCROW_PAYLOAD_FILE)"
+wallets-bootstrap-p2p: check-testnet
+	$(call ensure_wallet,$(ADMIN_ALIAS))
+	$(call ensure_wallet,$(CREATOR_ALIAS))
+	$(call ensure_wallet,$(FILLER_ALIAS))
+	@$(MAKE) wallets-trustline-p2p NETWORK="$(NETWORK)" ASSET_CODE="$(ASSET_CODE)" ASSET_ISSUER="$(ASSET_ISSUER)"
 
-escrow-init: check-tools
-	@CONTRACT_ID="$${ESCROW_CONTRACT_ID:-}"; \
-	if [[ -z "$$CONTRACT_ID" && -f "$(ESCROW_CONTRACT_ID_FILE)" ]]; then \
-		CONTRACT_ID="$$(cat "$(ESCROW_CONTRACT_ID_FILE)")"; \
-	fi; \
-	if [[ -z "$$CONTRACT_ID" ]]; then \
-		echo "Missing ESCROW_CONTRACT_ID and no cached contract id at $(ESCROW_CONTRACT_ID_FILE)"; \
-		exit 1; \
-	fi; \
-	if [[ ! -f "$(ESCROW_PAYLOAD_FILE)" ]]; then \
-		echo "Missing payload file $(ESCROW_PAYLOAD_FILE). Run make escrow-build-payload first."; \
-		exit 1; \
-	fi; \
-	PAYLOAD="$$(python3 -c 'import json,sys; print(json.dumps(json.load(open(sys.argv[1])), separators=(",",":")))' "$(ESCROW_PAYLOAD_FILE)")"; \
-	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- initialize_escrow --escrow_properties "$$PAYLOAD"
+wallets-trustline: check-testnet
+	$(call ensure_trustline,$(ADMIN_ALIAS))
+	$(call ensure_trustline,$(CONTRACTOR_ALIAS))
+	$(call ensure_trustline,$(FREELANCER_ALIAS))
+	$(call ensure_trustline,$(CREATOR_ALIAS))
+	$(call ensure_trustline,$(FILLER_ALIAS))
 
-escrow-get: check-stellar
-	@CONTRACT_ID="$${ESCROW_CONTRACT_ID:-}"; \
-	if [[ -z "$$CONTRACT_ID" && -f "$(ESCROW_CONTRACT_ID_FILE)" ]]; then \
-		CONTRACT_ID="$$(cat "$(ESCROW_CONTRACT_ID_FILE)")"; \
-	fi; \
-	if [[ -z "$$CONTRACT_ID" ]]; then \
-		echo "Missing ESCROW_CONTRACT_ID and no cached contract id at $(ESCROW_CONTRACT_ID_FILE)"; \
-		exit 1; \
-	fi; \
-	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- get_escrow
+wallets-trustline-escrow: check-testnet
+	$(call ensure_trustline,$(ADMIN_ALIAS))
+	$(call ensure_trustline,$(CONTRACTOR_ALIAS))
+	$(call ensure_trustline,$(FREELANCER_ALIAS))
 
-run-simple-escrow-flow: check-tools
-	@./scripts/run_simple_escrow_flow.sh
+wallets-trustline-p2p: check-testnet
+	$(call ensure_trustline,$(ADMIN_ALIAS))
+	$(call ensure_trustline,$(CREATOR_ALIAS))
+	$(call ensure_trustline,$(FILLER_ALIAS))
+
+escrow-build:
+	@$(MAKE) -C contracts/escrow contract-build
+
+escrow-install:
+	@$(MAKE) -C contracts/escrow contract-install-escrow
+
+escrow-deploy:
+	@$(MAKE) -C contracts/escrow escrow-deploy
+
+escrow-build-payload:
+	@$(MAKE) -C contracts/escrow escrow-build-payload
+
+escrow-init:
+	@$(MAKE) -C contracts/escrow escrow-init
+
+escrow-get:
+	@$(MAKE) -C contracts/escrow escrow-get
+
+escrow-flow:
+	@$(MAKE) -C contracts/escrow run-simple-escrow-flow
+
+p2p-build:
+	@$(MAKE) -C contracts/p2p contract-build
+
+p2p-install:
+	@$(MAKE) -C contracts/p2p contract-install-p2p
+
+p2p-deploy:
+	@$(MAKE) -C contracts/p2p p2p-deploy
+
+p2p-init:
+	@$(MAKE) -C contracts/p2p p2p-init
+
+p2p-config:
+	@$(MAKE) -C contracts/p2p p2p-get-config
+
+p2p-create-order:
+	@$(MAKE) -C contracts/p2p p2p-create-order
+
+p2p-get-order:
+	@$(MAKE) -C contracts/p2p p2p-get-order
+
+p2p-seed-orders-small:
+	@$(MAKE) -C contracts/p2p p2p-seed-orders-small
+
+p2p-seed-orders:
+	@$(MAKE) -C contracts/p2p p2p-seed-orders
+
+p2p-wallet-setup: check-testnet
+	@$(MAKE) wallets-bootstrap-p2p NETWORK="$(NETWORK)" ASSET_CODE="$(ASSET_CODE)" ASSET_ISSUER="$(ASSET_ISSUER)"
+
+p2p-quickstart: check-testnet
+	@$(MAKE) p2p-build NETWORK="$(NETWORK)"
+	@$(MAKE) p2p-install NETWORK="$(NETWORK)" SOURCE="$(SOURCE)"
+	@$(MAKE) p2p-deploy NETWORK="$(NETWORK)" SOURCE="$(SOURCE)" P2P_ALIAS="$(P2P_ALIAS)"
+	@$(MAKE) p2p-init NETWORK="$(NETWORK)" SOURCE="$(SOURCE)" P2P_ALIAS="$(P2P_ALIAS)"
+	@$(MAKE) p2p-seed-orders NETWORK="$(NETWORK)" P2P_ALIAS="$(P2P_ALIAS)" ARS_RATE_BASE="$(ARS_RATE_BASE)"
+
+p2p-flow:
+	@$(MAKE) -C contracts/p2p run-simple-p2p-flow
 
 clean-artifacts:
-	@rm -rf "$(ARTIFACTS_DIR)"
-	@echo "Removed $(ARTIFACTS_DIR)"
+	@rm -rf .artifacts
+	@echo "Removed .artifacts"

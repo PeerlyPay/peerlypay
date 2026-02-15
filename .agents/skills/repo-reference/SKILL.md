@@ -1,11 +1,11 @@
 ---
-name: peerlypay-reference
+name: repo-reference
 description: Reference codebase for Peerlypay. Use this skill when you need to understand the structure, implementation patterns, or code details of the Peerlypay project.
 ---
 
 # Peerlypay Codebase Reference
 
-83 files | 10479 lines | 86636 tokens
+94 files | 11568 lines | 94902 tokens
 
 ## Overview
 

@@ -21,6 +21,7 @@ export default function OrderCard({ order }: OrderCardProps) {
   const router = useRouter();
   const total = order.amount * order.rate;
   const actionLabel = order.type === 'sell' ? 'Buy Now' : 'Sell Now';
+  const currencyLabel = order.fiatCurrencyLabel;
 
   const handleClick = () => {
     router.push(`/orders/${order.id}`);
@@ -72,23 +73,23 @@ export default function OrderCard({ order }: OrderCardProps) {
           ⭐ {(order.reputation_score ?? 0) === 0 ? 'New trader' : `${order.reputation_score} trades`}
         </span>
         <span aria-hidden>|</span>
-        <span>Payment window: {order.duration || '30 min'}</span>
+        <span>Payment window: {order.durationLabel || '30 min'}</span>
       </div>
 
       {/* Row 3: Exchange rate - prominent */}
       <p className="mt-2 text-3xl font-display font-bold text-dark-500">
-        1 USDC = {order.rate.toLocaleString('en-US')} {order.currency}
+        1 USDC = {order.rate.toLocaleString('en-US')} {currencyLabel}
       </p>
 
       {/* Row 4: Limits */}
       <p className="mt-1 text-sm text-gray-600">
-        Limits: 10 - {total.toLocaleString('en-US')} {order.currency}
+        Limits: 10 - {total.toLocaleString('en-US')} {currencyLabel}
       </p>
 
       {/* Row 5: Payment methods + compact button */}
       <div className="mt-3 flex items-center justify-between gap-3">
         <span className="text-sm text-gray-700 truncate min-w-0">
-          {order.paymentMethod}
+          {order.paymentMethodLabel}
         </span>
         <button
           type="button"

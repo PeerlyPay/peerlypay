@@ -152,6 +152,8 @@
 }
 
 :root {
+  --font-dm-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-space-grotesk: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --radius: 0.625rem;
   --radius-balance-inner: 22px;
   --shadow-balance-card: 0 8px 32px rgb(0 0 0 / 12%);
@@ -354,6 +356,32 @@
   .text-body-bold {
     font-weight: 700;
   }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+@keyframes fadeOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeOverlay {
+  animation: fadeOverlay 0.3s ease-out forwards;
 }
 
 @keyframes fadeIn {

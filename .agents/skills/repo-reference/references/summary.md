@@ -38,28 +38,28 @@ This skill contains the following reference files:
 
 ## Statistics
 
-83 files | 10,479 lines
+94 files | 11,568 lines
 
 | Language | Files | Lines |
 |----------|------:|------:|
-| TypeScript (TSX) | 60 | 7,935 |
+| TypeScript (TSX) | 70 | 8,835 |
 | Rust | 11 | 947 |
 | TypeScript | 3 | 242 |
-| Markdown | 3 | 687 |
+| Markdown | 3 | 692 |
+| No Extension | 2 | 321 |
 | TOML | 2 | 40 |
-| No Extension | 1 | 167 |
-| CSS | 1 | 418 |
 | EXAMPLE | 1 | 1 |
-| JSON | 1 | 42 |
+| CSS | 1 | 446 |
+| JSON | 1 | 44 |
 
 **Largest files:**
-- `src/app/orders/page.tsx` (743 lines)
+- `src/app/orders/page.tsx` (1,024 lines)
 - `src/app/orders/[id]/OrderDetailClient.tsx` (509 lines)
-- `src/app/trade/payment/page.tsx` (422 lines)
-- `src/app/globals.css` (418 lines)
-- `src/components/QuickTradeInput.tsx` (415 lines)
+- `src/app/globals.css` (446 lines)
 - `src/app/trade/success/page.tsx` (407 lines)
-- `contracts/README.md` (383 lines)
-- `src/app/trade/waiting/page.tsx` (350 lines)
+- `contracts/README.md` (388 lines)
+- `src/components/QuickTradeInput.tsx` (373 lines)
 - `src/components/CompactEscrowStepper.tsx` (329 lines)
 - `src/app/marketplace/MarketplaceContent.tsx` (315 lines)
+- `src/app/orders/create/CreateOrderForm.tsx` (268 lines)
+- `src/components/WalletConnection.tsx` (261 lines)

@@ -3,29 +3,28 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowDownRight,
   Clock,
-  CheckCircle2,
-  AlertTriangle,
-  ChevronRight,
   Copy,
   Check,
   Star,
   Download,
   Flag,
   RefreshCw,
+  SlidersHorizontal,
+  X,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useTradeHistory, CompletedTrade } from '@/contexts/TradeHistoryContext';
 import EmptyState from '@/components/EmptyState';
 import FadeIn from '@/components/FadeIn';
 import { cn } from '@/lib/utils';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 
 // ============================================
 // TYPES
@@ -72,10 +71,10 @@ const MOCK_TRADES: FreelancerTrade[] = [
     txnId: '#TXN789012',
     paymentMethod: 'MercadoPago',
     timeline: [
-      { label: 'Trade iniciado', time: '3:15 PM', done: true },
-      { label: 'Pago enviado', time: '3:16 PM', done: true },
-      { label: 'Esperando liberación', time: '', done: false },
-      { label: 'USDC recibido', time: '', done: false },
+      { label: 'Trade started', time: '3:15 PM', done: true },
+      { label: 'Payment sent', time: '3:16 PM', done: true },
+      { label: 'Awaiting release', time: '', done: false },
+      { label: 'USDC received', time: '', done: false },
     ],
   },
   {
@@ -90,10 +89,10 @@ const MOCK_TRADES: FreelancerTrade[] = [
     txnId: '#TXN456789',
     paymentMethod: 'Bank Transfer',
     timeline: [
-      { label: 'Trade iniciado', time: '11:30 AM', done: true },
-      { label: 'Pago enviado', time: '11:31 AM', done: true },
-      { label: 'USDC liberado', time: '11:32 AM', done: true },
-      { label: 'USDC recibido', time: '11:33 AM', done: true },
+      { label: 'Trade started', time: '11:30 AM', done: true },
+      { label: 'Payment sent', time: '11:31 AM', done: true },
+      { label: 'USDC released', time: '11:32 AM', done: true },
+      { label: 'USDC received', time: '11:33 AM', done: true },
     ],
   },
   {
@@ -108,10 +107,10 @@ const MOCK_TRADES: FreelancerTrade[] = [
     txnId: '#TXN123456',
     paymentMethod: 'MercadoPago',
     timeline: [
-      { label: 'Trade iniciado', time: '9:00 AM', done: true },
-      { label: 'Pago enviado', time: '9:01 AM', done: true },
-      { label: 'USDC liberado', time: '9:03 AM', done: true },
-      { label: 'USDC recibido', time: '9:04 AM', done: true },
+      { label: 'Trade started', time: '9:00 AM', done: true },
+      { label: 'Payment sent', time: '9:01 AM', done: true },
+      { label: 'USDC released', time: '9:03 AM', done: true },
+      { label: 'USDC received', time: '9:04 AM', done: true },
     ],
   },
   {
@@ -126,10 +125,10 @@ const MOCK_TRADES: FreelancerTrade[] = [
     txnId: '#TXN987654',
     paymentMethod: 'Bank Transfer',
     timeline: [
-      { label: 'Trade iniciado', time: '4:45 PM', done: true },
-      { label: 'Pago enviado', time: '4:46 PM', done: true },
-      { label: 'USDC liberado', time: '4:47 PM', done: true },
-      { label: 'USDC recibido', time: '4:48 PM', done: true },
+      { label: 'Trade started', time: '4:45 PM', done: true },
+      { label: 'Payment sent', time: '4:46 PM', done: true },
+      { label: 'USDC released', time: '4:47 PM', done: true },
+      { label: 'USDC received', time: '4:48 PM', done: true },
     ],
   },
 ];
@@ -177,38 +176,49 @@ function formatRate(value: number): string {
 function StatusBadge({ status }: { status: TradeStatus }) {
   const config = {
     active: {
-      label: 'En progreso',
-      className: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+      label: 'IN PROGRESS',
+      className: 'border-indigo-200 bg-indigo-100 text-indigo-700',
+      dot: 'bg-indigo-500',
     },
     completed: {
-      label: 'Completado',
-      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      label: 'COMPLETED',
+      className: 'border-lime-200 bg-lime-100 text-lime-700',
+      dot: 'bg-lime-500',
     },
     disputed: {
-      label: 'Disputado',
-      className: 'bg-red-50 text-red-700 border-red-200',
+      label: 'DISPUTED',
+      className: 'border-red-200 bg-red-100 text-red-700',
+      dot: 'bg-red-500',
     },
   };
-  const { label, className } = config[status];
+  const { label, className, dot } = config[status];
 
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border',
-        className
-      )}
+    <Badge
+      variant="outline"
+      className={cn('gap-1.5 px-3 py-1 rounded-full text-xs font-medium', className)}
     >
-      {status === 'completed' && (
-        <CheckCircle2 className="size-3" />
-      )}
+      <span className={cn('size-1.5 rounded-full', dot)} />
       {label}
-    </span>
+    </Badge>
   );
 }
 
 // ============================================
 // TRADE CARD
 // ============================================
+
+function formatCardDate(dateString: string): string {
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  return `${day}-${month}-${year}, ${h12}:${minutes} ${ampm}`;
+}
 
 function TradeCard({
   trade,
@@ -222,49 +232,33 @@ function TradeCard({
       type="button"
       onClick={onTap}
       className={cn(
-        'w-full bg-white rounded-xl border border-gray-200 p-4 text-left',
-        'transition-all duration-200 hover:border-gray-300 hover:shadow-sm',
+        'w-full bg-white rounded-md border border-gray-200 p-4 text-left',
+        'shadow-[0px_4px_4px_0px_rgba(174,174,174,0.25)]',
+        'transition-all duration-200 hover:border-gray-300 hover:shadow-md',
         'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:ring-offset-2',
-        'active:scale-[0.98]',
-        trade.status === 'active' && 'border-l-4 border-l-fuchsia-400'
+        'active:scale-[0.98]'
       )}
     >
-      {/* Header: date + status */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-gray-400">
-          {formatDate(trade.createdAt)}
-        </span>
+      {/* Top row: Amount info + status badge */}
+      <div className="flex flex-wrap items-center justify-between gap-y-3">
+        <div className="flex flex-col gap-1">
+          <p className="font-display font-semibold text-[15px] leading-[1.5] text-[#191919]">
+            Sold {formatUsdc(trade.usdcAmount)} USDC
+          </p>
+          <p className="text-xs text-[#0f172a]">
+            Received{' '}
+            <span className="font-bold">
+              ${formatArs(trade.arsAmount)} ARS
+            </span>
+          </p>
+        </div>
         <StatusBadge status={trade.status} />
       </div>
 
-      {/* Amount sold */}
-      <p className="text-sm font-semibold text-gray-900 mb-1">
-        Vendiste {formatUsdc(trade.usdcAmount)} USDC
+      {/* Date */}
+      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.5px] text-[#404040]">
+        {formatCardDate(trade.createdAt)}
       </p>
-
-      {/* Amount received */}
-      <p className="text-sm text-gray-600 mb-2">
-        Recibiste{' '}
-        <span className="font-semibold text-emerald-600">
-          ${formatArs(trade.arsAmount)} ARS
-        </span>
-      </p>
-
-      {/* Rate + counterparty row */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        <span className="text-xs text-gray-400">
-          1 USDC = {formatRate(trade.rate)} ARS
-        </span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-medium text-gray-600">
-            @{trade.counterparty.username}
-          </span>
-          <span className="text-xs text-fuchsia-500">
-            ★ {trade.counterparty.reputation}
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-        </div>
-      </div>
     </button>
   );
 }
@@ -310,25 +304,17 @@ function TradeDetailSheet({
     : true;
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="rounded-t-2xl max-h-[90dvh] overflow-y-auto p-0"
-      >
+    <Drawer open={open} onOpenChange={(v) => !v && onClose()} direction="bottom">
+      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 rounded-t-2xl max-h-[90dvh] overflow-y-auto border-gray-200 bg-white p-0">
         <div className="px-5 pt-4 pb-8 space-y-5">
-          {/* Drag handle */}
-          <div className="flex justify-center">
-            <div className="w-10 h-1 rounded-full bg-gray-300" />
-          </div>
-
-          <SheetHeader className="space-y-1">
-            <SheetTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
-              Detalle del Trade
-            </SheetTitle>
-            <SheetDescription className="sr-only">
-              Detalles completos de la transacción
-            </SheetDescription>
-          </SheetHeader>
+          <DrawerHeader className="space-y-1 px-0 pt-0">
+            <DrawerTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
+              Trade Details
+            </DrawerTitle>
+            <DrawerDescription className="sr-only">
+              Full transaction details
+            </DrawerDescription>
+          </DrawerHeader>
 
           {/* Status */}
           <div className="flex justify-center">
@@ -338,31 +324,31 @@ function TradeDetailSheet({
           {/* Summary */}
           <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Vendiste</span>
+              <span className="text-body-sm text-gray-500">You sold</span>
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-gray-900 tabular-nums">
                 {formatUsdc(trade.usdcAmount)} USDC
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Recibiste</span>
+              <span className="text-body-sm text-gray-500">You received</span>
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-emerald-600 tabular-nums">
                 ${formatArs(trade.arsAmount)} ARS
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Tasa</span>
+              <span className="text-body-sm text-gray-500">Rate</span>
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-gray-700 tabular-nums">
                 1 USDC = {formatRate(trade.rate)} ARS
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Método</span>
+              <span className="text-body-sm text-gray-500">Method</span>
               <span className="text-body-sm font-medium text-gray-700">
                 {trade.paymentMethod}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Contraparte</span>
+              <span className="text-body-sm text-gray-500">Counterparty</span>
               <span className="text-body-sm font-medium text-gray-700">
                 @{trade.counterparty.username}{' '}
                 <span className="text-fuchsia-500">
@@ -421,7 +407,7 @@ function TradeDetailSheet({
           {/* Transaction ID */}
           <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
             <div>
-              <p className="text-xs text-gray-400">ID de transacción</p>
+              <p className="text-xs text-gray-400">Transaction ID</p>
               <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-gray-700 tabular-nums">
                 {trade.txnId}
               </p>
@@ -448,7 +434,7 @@ function TradeDetailSheet({
           {trade.status === 'completed' && !ratingSubmitted && (
             <div className="bg-gray-50 rounded-2xl p-4">
               <p className="text-body-sm text-gray-500 text-center mb-3">
-                Califica a{' '}
+                Rate{' '}
                 <strong className="text-gray-900">
                   @{trade.counterparty.username}
                 </strong>
@@ -480,7 +466,7 @@ function TradeDetailSheet({
                   onClick={() => setRatingSubmitted(true)}
                   className="w-full h-10 rounded-xl font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 transition-colors active:scale-[0.98]"
                 >
-                  Enviar calificación
+                  Submit rating
                 </button>
               )}
             </div>
@@ -492,7 +478,7 @@ function TradeDetailSheet({
                 <Check className="size-4 text-emerald-600" strokeWidth={2.5} />
               </div>
               <p className="text-body-sm font-semibold text-gray-900">
-                Gracias por tu calificación!
+                Thanks for your rating!
               </p>
             </div>
           )}
@@ -505,7 +491,7 @@ function TradeDetailSheet({
                 className="w-full h-12 rounded-xl flex items-center justify-center gap-2 font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 transition-all active:scale-[0.98]"
               >
                 <Download className="size-4" />
-                Descargar recibo
+                Download receipt
               </button>
             )}
             {isWithin24h && (
@@ -514,13 +500,13 @@ function TradeDetailSheet({
                 className="w-full h-10 rounded-xl flex items-center justify-center gap-2 font-[family-name:var(--font-space-grotesk)] text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
               >
                 <Flag className="size-4" />
-                Reportar problema
+                Report issue
               </button>
             )}
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -547,12 +533,250 @@ function realTradeToFreelancer(trade: CompletedTrade): FreelancerTrade {
     txnId: trade.txnId,
     paymentMethod: trade.paymentMethod,
     timeline: [
-      { label: 'Trade iniciado', time: timeStr, done: true },
-      { label: 'Pago enviado', time: timeStr, done: true },
-      { label: 'USDC liberado', time: timeStr, done: true },
-      { label: 'USDC recibido', time: timeStr, done: true },
+      { label: 'Trade started', time: timeStr, done: true },
+      { label: 'Payment sent', time: timeStr, done: true },
+      { label: 'USDC released', time: timeStr, done: true },
+      { label: 'USDC received', time: timeStr, done: true },
     ],
   };
+}
+
+// ============================================
+// FREELANCER TRADES VIEW
+// ============================================
+
+// ============================================
+// FILTER TYPES & DEFAULTS
+// ============================================
+
+type TradeType = 'buy' | 'sell';
+type DateRange = 'last7' | 'last30' | 'all';
+
+interface TradeFilters {
+  status: TradeStatus[];
+  type: TradeType[];
+  dateRange: DateRange;
+}
+
+const DEFAULT_FILTERS: TradeFilters = {
+  status: [],
+  type: [],
+  dateRange: 'all',
+};
+
+function countActiveFilters(filters: TradeFilters): number {
+  let count = filters.status.length + filters.type.length;
+  if (filters.dateRange !== 'all') count++;
+  return count;
+}
+
+// ============================================
+// FILTER CHECKBOX
+// ============================================
+
+function FilterCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-3 w-full py-2.5 text-left group"
+    >
+      <div
+        className={cn(
+          'flex items-center justify-center size-5 rounded-md border-2 transition-all',
+          checked
+            ? 'bg-magenta-500 border-magenta-500'
+            : 'border-gray-300 group-hover:border-gray-400'
+        )}
+      >
+        {checked && <Check className="size-3 text-white" strokeWidth={3} />}
+      </div>
+      <span className="text-sm text-gray-700">{label}</span>
+    </button>
+  );
+}
+
+// ============================================
+// FILTER BOTTOM SHEET
+// ============================================
+
+function FilterSheet({
+  open,
+  onClose,
+  filters,
+  onApply,
+  resultCount,
+}: {
+  open: boolean;
+  onClose: () => void;
+  filters: TradeFilters;
+  onApply: (filters: TradeFilters) => void;
+  resultCount: number;
+}) {
+  const [draft, setDraft] = useState<TradeFilters>(filters);
+
+  useEffect(() => {
+    if (open) setDraft(filters);
+  }, [open, filters]);
+
+  const toggleStatus = (s: TradeStatus) => {
+    setDraft((prev) => ({
+      ...prev,
+      status: prev.status.includes(s)
+        ? prev.status.filter((v) => v !== s)
+        : [...prev.status, s],
+    }));
+  };
+
+  const toggleType = (t: TradeType) => {
+    setDraft((prev) => ({
+      ...prev,
+      type: prev.type.includes(t)
+        ? prev.type.filter((v) => v !== t)
+        : [...prev.type, t],
+    }));
+  };
+
+  const setDateRange = (d: DateRange) => {
+    setDraft((prev) => ({
+      ...prev,
+      dateRange: prev.dateRange === d ? 'all' : d,
+    }));
+  };
+
+  const clearAll = () => setDraft({ ...DEFAULT_FILTERS });
+
+  const hasDraftFilters = countActiveFilters(draft) > 0;
+
+  return (
+    <Drawer open={open} onOpenChange={(v) => !v && onClose()} direction="bottom">
+      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 rounded-t-2xl max-h-[85dvh] overflow-y-auto border-gray-200 bg-white p-0">
+        <div className="px-5 pt-4 pb-8 space-y-6">
+          {/* Header */}
+          <DrawerHeader className="space-y-0 px-0 pt-0">
+            <div className="flex items-center justify-between">
+              <DrawerTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
+                Filters
+              </DrawerTitle>
+              <div className="flex items-center gap-3">
+                {hasDraftFilters && (
+                  <button
+                    type="button"
+                    onClick={clearAll}
+                    className="text-sm text-magenta-500 font-medium hover:text-magenta-600 transition-colors"
+                  >
+                    Clear all
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex items-center justify-center size-8 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <X className="size-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <DrawerDescription className="sr-only">
+              Filter your trades by status, type, and date range
+            </DrawerDescription>
+          </DrawerHeader>
+
+          {/* Status */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Status
+            </h3>
+            <div className="space-y-0.5">
+              <FilterCheckbox
+                checked={draft.status.includes('active')}
+                onChange={() => toggleStatus('active')}
+                label="Active"
+              />
+              <FilterCheckbox
+                checked={draft.status.includes('completed')}
+                onChange={() => toggleStatus('completed')}
+                label="Completed"
+              />
+              <FilterCheckbox
+                checked={draft.status.includes('disputed')}
+                onChange={() => toggleStatus('disputed')}
+                label="Disputed"
+              />
+            </div>
+          </div>
+
+          {/* Type */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Type
+            </h3>
+            <div className="space-y-0.5">
+              <FilterCheckbox
+                checked={draft.type.includes('buy')}
+                onChange={() => toggleType('buy')}
+                label="Buy orders"
+              />
+              <FilterCheckbox
+                checked={draft.type.includes('sell')}
+                onChange={() => toggleType('sell')}
+                label="Sell orders"
+              />
+            </div>
+          </div>
+
+          {/* Date range */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+              Date Range
+            </h3>
+            <div className="space-y-0.5">
+              <FilterCheckbox
+                checked={draft.dateRange === 'last7'}
+                onChange={() => setDateRange('last7')}
+                label="Last 7 days"
+              />
+              <FilterCheckbox
+                checked={draft.dateRange === 'last30'}
+                onChange={() => setDateRange('last30')}
+                label="Last 30 days"
+              />
+              <FilterCheckbox
+                checked={draft.dateRange === 'all'}
+                onChange={() => setDateRange('all')}
+                label="All time"
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="space-y-3 pt-2">
+            <p className="text-center text-xs text-gray-400">
+              Showing {resultCount} {resultCount === 1 ? 'trade' : 'trades'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                onApply(draft);
+                onClose();
+              }}
+              className="w-full h-12 rounded-xl bg-magenta-500 text-white font-[family-name:var(--font-space-grotesk)] font-semibold text-sm shadow-md shadow-magenta-500/20 hover:bg-magenta-600 transition-all active:scale-[0.98]"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
 }
 
 // ============================================
@@ -562,7 +786,8 @@ function realTradeToFreelancer(trade: CompletedTrade): FreelancerTrade {
 function FreelancerTradesView() {
   const router = useRouter();
   const { trades: realTrades } = useTradeHistory();
-  const [activeTab, setActiveTab] = useState<TradeStatus>('active');
+  const [filters, setFilters] = useState<TradeFilters>({ ...DEFAULT_FILTERS });
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTrade, setSelectedTrade] = useState<FreelancerTrade | null>(
@@ -576,97 +801,140 @@ function FreelancerTradesView() {
 
   const allTrades = useMemo(() => {
     const converted = realTrades.map(realTradeToFreelancer);
-    // Merge: real trades first, then mock trades (deduped by id)
     const realIds = new Set(converted.map((t) => t.id));
     const mockOnly = MOCK_TRADES.filter((t) => !realIds.has(t.id));
     return [...converted, ...mockOnly];
   }, [realTrades]);
 
-  const filteredTrades = useMemo(
-    () => allTrades.filter((t) => t.status === activeTab),
-    [activeTab, allTrades]
-  );
+  const filteredTrades = useMemo(() => {
+    return allTrades.filter((trade) => {
+      // Status filter
+      if (filters.status.length > 0 && !filters.status.includes(trade.status)) {
+        return false;
+      }
 
-  const counts = useMemo(
-    () => ({
-      active: allTrades.filter((t) => t.status === 'active').length,
-      completed: allTrades.filter((t) => t.status === 'completed').length,
-      disputed: allTrades.filter((t) => t.status === 'disputed').length,
-    }),
-    [allTrades]
-  );
+      // Type filter (all mock data is "sell" for now)
+      if (filters.type.length > 0) {
+        const tradeType: TradeType = 'sell'; // extend when buy trades exist
+        if (!filters.type.includes(tradeType)) return false;
+      }
+
+      // Date range filter
+      if (filters.dateRange !== 'all') {
+        const now = Date.now();
+        const created = new Date(trade.createdAt).getTime();
+        const days = filters.dateRange === 'last7' ? 7 : 30;
+        if (now - created > days * 24 * 60 * 60 * 1000) return false;
+      }
+
+      return true;
+    });
+  }, [filters, allTrades]);
+
+  const activeFilterCount = countActiveFilters(filters);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
     setTimeout(() => setIsRefreshing(false), 1000);
   };
 
-  const tabs: { status: TradeStatus; label: string }[] = [
-    { status: 'active', label: 'Activos' },
-    { status: 'completed', label: 'Completados' },
-    { status: 'disputed', label: 'Disputados' },
-  ];
-
-  const emptyMessages: Record<
-    TradeStatus,
-    { title: string; description?: string; action?: string }
-  > = {
-    active: { title: 'No tienes trades activos' },
-    completed: {
-      title: 'Aún no has completado ningún trade',
-      action: 'Hacer mi primer trade',
-    },
-    disputed: { title: 'No tienes disputas' },
-  };
-
   return (
     <>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-h3 text-black">Mis Trades</h1>
-        <button
-          type="button"
-          onClick={handleRefresh}
-          className={cn(
-            'flex items-center justify-center size-9 rounded-full bg-gray-100 hover:bg-gray-200 transition-all active:scale-95',
-            isRefreshing && 'animate-spin'
-          )}
-          aria-label="Actualizar"
-        >
-          <RefreshCw className="size-4 text-gray-500" />
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-3 mb-6">
-        {tabs.map(({ status, label }) => (
+        <h1 className="text-h3 text-black">My Trades</h1>
+        <div className="flex items-center gap-2">
           <button
-            key={status}
             type="button"
-            onClick={() => setActiveTab(status)}
+            onClick={() => setFilterSheetOpen(true)}
             className={cn(
-              'flex-1 py-3 rounded-xl font-semibold transition-all text-sm',
-              activeTab === status
-                ? 'bg-magenta-500 text-white shadow-md shadow-magenta-500/20'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              'flex items-center gap-2 px-3.5 py-2 rounded-xl border transition-all active:scale-[0.97]',
+              activeFilterCount > 0
+                ? 'border-magenta-200 bg-magenta-50 text-magenta-600'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
             )}
           >
-            {label}
-            {counts[status] > 0 && (
-              <span
-                className={cn(
-                  'ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold',
-                  activeTab === status
-                    ? 'bg-white/25 text-white'
-                    : 'bg-gray-200 text-gray-500'
-                )}
-              >
-                {counts[status]}
+            <SlidersHorizontal className="size-4" />
+            <span className="text-sm font-medium">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-magenta-500 text-white text-[10px] font-bold">
+                {activeFilterCount}
               </span>
             )}
           </button>
-        ))}
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className={cn(
+              'flex items-center justify-center size-9 rounded-full bg-gray-100 hover:bg-gray-200 transition-all active:scale-95',
+              isRefreshing && 'animate-spin'
+            )}
+            aria-label="Refresh"
+          >
+            <RefreshCw className="size-4 text-gray-500" />
+          </button>
+        </div>
       </div>
+
+      {/* Active filter chips */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          {filters.status.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-magenta-50 text-magenta-600 text-xs font-medium border border-magenta-200"
+            >
+              {s === 'active' ? 'Active' : s === 'completed' ? 'Completed' : 'Disputed'}
+              <button
+                type="button"
+                onClick={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    status: prev.status.filter((v) => v !== s),
+                  }))
+                }
+                className="hover:text-magenta-800"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+          {filters.type.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-magenta-50 text-magenta-600 text-xs font-medium border border-magenta-200"
+            >
+              {t === 'buy' ? 'Buy orders' : 'Sell orders'}
+              <button
+                type="button"
+                onClick={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    type: prev.type.filter((v) => v !== t),
+                  }))
+                }
+                className="hover:text-magenta-800"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+          {filters.dateRange !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-magenta-50 text-magenta-600 text-xs font-medium border border-magenta-200">
+              {filters.dateRange === 'last7' ? 'Last 7 days' : 'Last 30 days'}
+              <button
+                type="button"
+                onClick={() =>
+                  setFilters((prev) => ({ ...prev, dateRange: 'all' }))
+                }
+                className="hover:text-magenta-800"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Trade list */}
       {isLoading ? (
@@ -703,26 +971,39 @@ function FreelancerTradesView() {
       ) : (
         <FadeIn>
           <EmptyState
-            icon={
-              activeTab === 'active' ? (
-                <Clock className="w-14 h-14 text-gray-300" />
-              ) : activeTab === 'completed' ? (
-                <ArrowDownRight className="w-14 h-14 text-gray-300" />
-              ) : (
-                <AlertTriangle className="w-14 h-14 text-gray-300" />
-              )
+            icon={<Clock className="w-14 h-14 text-gray-300" />}
+            title={
+              activeFilterCount > 0
+                ? 'No trades match your filters'
+                : 'No trades yet'
             }
-            title={emptyMessages[activeTab].title}
-            description={emptyMessages[activeTab].description}
-            actionText={emptyMessages[activeTab].action}
-            onAction={
-              emptyMessages[activeTab].action
-                ? () => router.push('/trade')
+            description={
+              activeFilterCount > 0
+                ? 'Try adjusting your filters'
                 : undefined
+            }
+            actionText={
+              activeFilterCount > 0
+                ? 'Clear filters'
+                : 'Make my first trade'
+            }
+            onAction={
+              activeFilterCount > 0
+                ? () => setFilters({ ...DEFAULT_FILTERS })
+                : () => router.push('/trade')
             }
           />
         </FadeIn>
       )}
+
+      {/* Filter bottom sheet */}
+      <FilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        filters={filters}
+        onApply={setFilters}
+        resultCount={filteredTrades.length}
+      />
 
       {/* Trade detail sheet */}
       <TradeDetailSheet

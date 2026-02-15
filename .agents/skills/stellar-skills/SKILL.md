@@ -5,9 +5,67 @@ description: Stellar blockchain and Soroban smart contract development. SDKs, wa
 
 # Stellar & Soroban Development
 
-## Quick Reference
+## When to use this skill
 
-### Networks
+Use this skill when you need to:
+- Build, deploy, or invoke Soroban contracts via `stellar` CLI.
+- Set up wallet identities and asset trustlines for test flows.
+- Integrate frontend wallet signing with Stellar Wallets Kit.
+- Debug transaction simulation failures and contract errors.
+
+---
+
+## Fast paths
+
+### 1) Deploy a contract quickly (testnet)
+
+```bash
+stellar contract build
+
+stellar contract upload \
+  --wasm target/wasm32v1-none/release/my_contract.wasm \
+  --source alice \
+  --network testnet
+
+stellar contract deploy \
+  --wasm-hash <WASM_HASH> \
+  --source alice \
+  --network testnet
+```
+
+### 2) Create trustline for an issued asset
+
+```bash
+stellar tx new change-trust \
+  --source-account creator \
+  --line "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5" \
+  --network testnet
+```
+
+### 3) Resolve Soroban token contract id from classic asset
+
+```bash
+stellar contract id asset \
+  --network testnet \
+  --asset "USDC:G...ISSUER"
+```
+
+### 4) Invoke a contract method quickly
+
+```bash
+stellar contract invoke \
+  --network testnet \
+  --source alice \
+  --id CXXXXX... \
+  -- method_name \
+  --arg_1 value
+```
+
+---
+
+## Core workflows
+
+### Workflow 1: Network and funding basics
 
 | Network | Horizon | Soroban RPC | Explorer |
 |---------|---------|-------------|----------|
@@ -15,38 +73,72 @@ description: Stellar blockchain and Soroban smart contract development. SDKs, wa
 | **Testnet** | `horizon-testnet.stellar.org` | `soroban-testnet.stellar.org` | stellar.expert/explorer/testnet |
 | **Futurenet** | `horizon-futurenet.stellar.org` | `rpc-futurenet.stellar.org` | stellarchain.io |
 
-### Faucet (Testnet)
+Testnet XLM faucet:
 
 ```bash
 curl "https://friendbot.stellar.org?addr=YOUR_PUBLIC_KEY"
 ```
 
----
+### Workflow 2: Deploy + bindings workflow
 
-## CLIs & Scaffolds
+```bash
+stellar contract build
 
-| Tool | Use |
-|------|-----|
-| **stellar CLI** | Build, deploy, invoke contracts, generate TS bindings |
-| **Scaffold Stellar** | Full project (Soroban + frontend + local network) → scaffoldstellar.org |
-| **Stellar Lab** | Web tool for network experiments → lab.stellar.org |
+stellar contract upload \
+  --wasm target/wasm32v1-none/release/my_contract.wasm \
+  --source alice \
+  --network testnet
 
----
+stellar contract deploy \
+  --wasm-hash <WASM_HASH> \
+  --source alice \
+  --network testnet
 
-## SDKs
+stellar contract bindings typescript \
+  --contract-id CXXXXX... \
+  --output-dir ./src/contracts/my-contract \
+  --network testnet
+```
 
-| Library | Purpose |
-|---------|---------|
-| `@stellar/stellar-sdk` | Official JS/TS SDK (classic + Soroban) |
-| `soroban-sdk` (Rust) | Write Soroban smart contracts |
-| `@stellar/freighter-api` | Direct Freighter wallet integration |
-| `@creit.tech/stellar-wallets-kit` | Multi-wallet abstraction → stellarwalletskit.dev |
+Notes:
+- `stellar contract install` is deprecated; prefer `stellar contract upload`.
+- Build output path can vary; use the path reported by `stellar contract build`.
 
----
+### Workflow 3: Asset setup for token transfers
 
-## Workflows
+1. Create trustline for each participant account.
+2. Ensure account receives asset balance from issuer/distributor.
+3. Resolve and use the corresponding Soroban token contract id when needed.
 
-### Workflow 1: Connect Wallet (Stellar Wallets Kit)
+Notes:
+- Trustline is required before token `transfer` succeeds.
+- Friendbot only funds XLM; it does not mint/send issued assets.
+
+### Workflow 4: Invoke through SDK + wallet signing
+
+```typescript
+import * as StellarSdk from '@stellar/stellar-sdk';
+
+const server = new StellarSdk.SorobanRpc.Server('https://soroban-testnet.stellar.org');
+const contract = new StellarSdk.Contract('CXXXXX...');
+
+const tx = new StellarSdk.TransactionBuilder(account, { fee: '100' })
+  .addOperation(contract.call('method_name', ...args))
+  .setTimeout(30)
+  .build();
+
+await server.simulateTransaction(tx);
+
+const { signedTxXdr } = await kit.signTransaction(tx.toXDR(), {
+  networkPassphrase: StellarSdk.Networks.TESTNET,
+});
+
+await server.sendTransaction(
+  StellarSdk.TransactionBuilder.fromXDR(signedTxXdr, StellarSdk.Networks.TESTNET)
+);
+```
+
+### Workflow 5: Wallet connect (Stellar Wallets Kit)
 
 ```typescript
 import { StellarWalletsKit, WalletNetwork, allowAllModules } from '@creit.tech/stellar-wallets-kit';
@@ -57,7 +149,6 @@ const kit = new StellarWalletsKit({
   modules: allowAllModules(),
 });
 
-// Open modal to select wallet
 await kit.openModal({
   onWalletSelected: async (option) => {
     kit.setWallet(option.id);
@@ -67,241 +158,121 @@ await kit.openModal({
 });
 ```
 
-### Workflow 2: Deploy Contract (stellar CLI)
+---
+
+## Known pitfalls and safe patterns
+
+### CLI argument encoding
+
+- For large integers in UDT JSON payloads, prefer strings (for example `"10000000"`).
+- For optional/complex args, use valid JSON literals (`null`, quoted strings, arrays, objects).
+- For large objects, prefer file-based payloads.
 
 ```bash
-# Build contract
-stellar contract build
-
-# Upload wasm (preferred; returns wasm hash)
-stellar contract upload \
-  --wasm target/wasm32v1-none/release/my_contract.wasm \
-  --source alice \
-  --network testnet
-
-# Deploy using uploaded wasm hash
-stellar contract deploy \
-  --wasm-hash <WASM_HASH> \
-  --source alice \
-  --network testnet
-
-# Generate TypeScript bindings
-stellar contract bindings typescript \
-  --contract-id CXXXXX... \
-  --output-dir ./src/contracts/my-contract \
-  --network testnet
-```
-
-Notes:
-- `stellar contract install` is deprecated in recent CLI versions; use `stellar contract upload`.
-- Build output target/path can vary by project/toolchain. Use the path reported by `stellar contract build`.
-
-### Workflow 2b: Resolve Soroban Token Contract ID from Classic Asset
-
-```bash
-stellar contract id asset \
-  --network testnet \
-  --asset "USDC:G...ISSUER"
-```
-
-Notes:
-- `G...` issuer/account address is not the same as Soroban token contract ID.
-- Use the returned `C...` contract ID when interacting with Soroban token contracts.
-
-### Workflow 3: Invoke Contract
-
-```typescript
-import * as StellarSdk from '@stellar/stellar-sdk';
-
-const server = new StellarSdk.SorobanRpc.Server('https://soroban-testnet.stellar.org');
-const contract = new StellarSdk.Contract('CXXXXX...');
-
-// Build transaction
-const tx = new StellarSdk.TransactionBuilder(account, { fee: '100' })
-  .addOperation(contract.call('method_name', ...args))
-  .setTimeout(30)
-  .build();
-
-// Simulate
-const simulated = await server.simulateTransaction(tx);
-
-// Sign with wallet kit
-const { signedTxXdr } = await kit.signTransaction(tx.toXDR());
-
-// Submit
-const result = await server.sendTransaction(
-  StellarSdk.TransactionBuilder.fromXDR(signedTxXdr, StellarSdk.Networks.TESTNET)
-);
-```
-
-### Workflow 4: Sign & Submit with Wallet Kit
-
-```typescript
-// For Soroban transactions that need simulation
-const signedTx = await kit.signTransaction(tx.toXDR(), {
-  networkPassphrase: StellarSdk.Networks.TESTNET,
-});
-
-// Submit and poll for result
-const sendResponse = await server.sendTransaction(
-  StellarSdk.TransactionBuilder.fromXDR(signedTx.signedTxXdr, StellarSdk.Networks.TESTNET)
-);
-
-if (sendResponse.status === 'PENDING') {
-  let result = await server.getTransaction(sendResponse.hash);
-  while (result.status === 'NOT_FOUND') {
-    await new Promise(r => setTimeout(r, 1000));
-    result = await server.getTransaction(sendResponse.hash);
-  }
-}
-```
-
-### Workflow 5: Soroban CLI Argument Encoding and Debugging
-
-```bash
-# Example: i128/u128 fields in UDT JSON should be encoded as strings
 stellar contract invoke \
   --network testnet \
   --source alice \
   --id CXXXXX... \
   -- some_method \
   --payload '{"amount":"10000000","memo":"0"}'
-
-# Example: Option<String> expects valid JSON value
-# Some("hello")
---new_evidence '"hello"'
-# None
---new_evidence null
 ```
 
-Common CLI parsing rules:
-- For large integers in user-defined types, prefer JSON strings (for example `"10000000"`).
-- For optional/complex args, pass valid JSON literals (`null`, quoted JSON strings, arrays, objects).
-- For large objects, prefer file-based payloads instead of shell-escaped inline JSON.
+### CLI enum limitation and internal mapping
 
-Debugging checklist:
+- Some `stellar contract invoke` versions do not reliably handle Rust UDT enum args.
+- Symptom: invoke fails before submission or panics in spec tooling.
+- Safe pattern: keep typed domain methods for SDK/tests and add CLI-facing primitive wrappers.
+
+```rust
+pub fn submit_request(
+    e: Env,
+    caller: Address,
+    category: RequestCategory,
+    urgency: UrgencyLevel,
+    quantity: i128,
+    ttl_secs: u64,
+) -> Result<u64, ContractError> { /* ... */ }
+
+pub fn submit_request_cli(
+    e: Env,
+    caller: Address,
+    category_code: u32,
+    urgency_code: u32,
+    quantity: i128,
+    ttl_secs: u64,
+) -> Result<u64, ContractError> {
+    let category = RequestCategory::from_code(category_code);
+    let urgency = UrgencyLevel::from_code(urgency_code);
+    /* ... */
+}
+```
+
+```bash
+stellar contract invoke \
+  --network testnet \
+  --source alice \
+  --id CXXXXX... \
+  -- submit_request_cli \
+  --caller G... \
+  --category_code 0 \
+  --urgency_code 1 \
+  --quantity 1000 \
+  --ttl_secs 600
+```
+
+Mapping convention example:
+- Category enum: `0=Basic`, `1=Premium`, fallback `Custom(code)`.
+- Urgency enum: `0=Low`, `1=Normal`, `2=High`, fallback `Other(code)`.
+
+---
+
+## Troubleshooting checklist
+
 - Simulate first and inspect diagnostic events.
-- If you get `Error(Contract, #N)`, map `#N` to your contract error enum.
-- Confirm signer identity matches methods that call `require_auth()`.
-- Confirm token balances separately from trustline existence before transfer calls.
+- If you see `Error(Contract, #N)`, map `#N` to your contract error enum.
+- If invoke fails before simulation/submission with enum args, test primitive wrapper args.
+- Confirm signer identity for methods that call `require_auth()`.
+- Confirm both trustline existence and token balance before transfers.
 
 ---
 
-## OpenZeppelin Contracts (Soroban)
+## Tools and references
 
-Audited contracts. **Check before writing custom logic.**
-
-| Category | Includes |
-|----------|----------|
-| **Tokens** | Fungible, NFT, RWAs, Stablecoin, Vault (SEP-56) |
-| **Access** | Ownable, Role-Based Access Control |
-| **Utils** | Pausable, Upgradeable, Merkle Distributor |
-
-Wizard: https://wizard.openzeppelin.com
-Docs: https://docs.openzeppelin.com/stellar-contracts
-
----
-
-## Security
+### CLIs and scaffolds
 
 | Tool | Use |
 |------|-----|
-| **Scout Audit** | Static analysis for Soroban → github.com/CoinFabrik/scout-soroban |
+| **stellar CLI** | Build, deploy, invoke contracts, generate TS bindings |
+| **Scaffold Stellar** | Full project template and local network tools |
+| **Stellar Lab** | Web tool for network experiments |
+
+### SDKs
+
+| Library | Purpose |
+|---------|---------|
+| `@stellar/stellar-sdk` | Official JS/TS SDK (classic + Soroban) |
+| `soroban-sdk` (Rust) | Write Soroban smart contracts |
+| `@stellar/freighter-api` | Direct Freighter wallet integration |
+| `@creit.tech/stellar-wallets-kit` | Multi-wallet abstraction |
+
+### Security
+
+| Tool | Use |
+|------|-----|
+| **Scout Audit** | Static analysis for Soroban |
 | **scout-actions** | GitHub Action for PR checks |
 
 ```bash
-# Run Scout locally
 cargo install scout-audit
 scout-audit --path ./contracts
 ```
 
----
+### Protocols, infra, and docs
 
-## Ecosystem
+- OpenZeppelin Stellar contracts: https://docs.openzeppelin.com/stellar-contracts
+- SEP index: https://github.com/stellar/stellar-protocol/tree/master/ecosystem
+- Core docs: https://developers.stellar.org
+- Soroban docs: https://soroban.stellar.org/docs
+- Wallet kit docs: https://stellarwalletskit.dev
 
-### DeFi & Protocols
-
-| Project | What |
-|---------|------|
-| **Soroswap** | AMM/DEX → soroswap.finance |
-| **Defindex** | Yield aggregator → defindex.io |
-| **Allbridge** | Cross-chain bridge → allbridge.io |
-| **Reflector** | Oracles (SEP-40) → reflector.network |
-
-### Infrastructure & Services
-
-| Project | What |
-|---------|------|
-| **Trustless Work** | Programmable escrows → trustlesswork.com |
-| **Mercury** | Custom indexer (Retroshades, Zephyr) → mercurydata.app |
-| **Horizon API** | Official API for network queries |
-| **Anchor Platform** | On/off-ramps (SEP-10, SEP-24, SEP-31) |
-| **Stellar Disbursement Platform** | Mass payouts infrastructure |
-| **MoneyGram Ramps** | USDC on/off-ramp at retail locations |
-
-### Block Explorers
-
-| Explorer | Networks |
-|----------|----------|
-| **StellarExpert** | Mainnet, Testnet → stellar.expert |
-| **StellarChain** | Mainnet, Testnet, Futurenet → stellarchain.io |
-| **Stellar Explorer** | All networks |
-
-### RPC Providers
-
-| Provider | Notes |
-|----------|-------|
-| SDF (public) | Default, rate limited |
-| Validation Cloud | Free + premium |
-| Ankr | Horizon + Soroban RPC |
-| QuickNode | Performance tiers |
-
----
-
-## SEPs (Stellar Ecosystem Proposals)
-
-| SEP | Purpose |
-|-----|---------|
-| **SEP-10** | Web Authentication |
-| **SEP-24** | Interactive deposits/withdrawals |
-| **SEP-41** | Soroban token interface |
-| **SEP-56** | Tokenized Vault Standard |
-
-All SEPs: github.com/stellar/stellar-protocol/tree/master/ecosystem
-
----
-
-## Decision Framework
-
-```
-What are you building?
-│
-├─ **Smart Contract** (Soroban)
-│  ├─ Token? → Check OpenZeppelin first
-│  ├─ DeFi? → Integrate with Soroswap/Defindex
-│  └─ Custom logic → Use soroban-sdk + Scout audit
-│
-├─ **Frontend dApp**
-│  ├─ Wallet connection → Stellar Wallets Kit
-│  ├─ Contract interaction → @stellar/stellar-sdk
-│  └─ Full scaffold → Scaffold Stellar
-│
-├─ **Backend/Indexing**
-│  ├─ Simple queries → Horizon API
-│  ├─ Custom indexing → Mercury
-│  └─ Real-time → Soroban RPC subscriptions
-│
-└─ **Payments/Ramps**
-   ├─ On/off-ramp → Anchor Platform
-   └─ Mass payouts → Stellar Disbursement Platform
-```
-
----
-
-## Docs
-
-- https://developers.stellar.org
-- https://soroban.stellar.org/docs
-- https://stellarwalletskit.dev
-
-**Principle**: Check for existing tools/protocols before writing custom code.
+**Principle**: Prefer existing protocols/tools before building custom infrastructure.

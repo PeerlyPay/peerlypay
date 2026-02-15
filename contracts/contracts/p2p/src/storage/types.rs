@@ -11,6 +11,19 @@ pub enum FiatCurrency {
     Other(u32),
 }
 
+impl FiatCurrency {
+    pub fn from_code(code: u32) -> Self {
+        match code {
+            0 => Self::Usd,
+            1 => Self::Eur,
+            2 => Self::Ars,
+            3 => Self::Cop,
+            4 => Self::Gbp,
+            _ => Self::Other(code),
+        }
+    }
+}
+
 #[contracttype]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PaymentMethod {
@@ -18,6 +31,17 @@ pub enum PaymentMethod {
     MobileWallet,
     Cash,
     Other(u32),
+}
+
+impl PaymentMethod {
+    pub fn from_code(code: u32) -> Self {
+        match code {
+            0 => Self::BankTransfer,
+            1 => Self::MobileWallet,
+            2 => Self::Cash,
+            _ => Self::Other(code),
+        }
+    }
 }
 
 #[contracttype]

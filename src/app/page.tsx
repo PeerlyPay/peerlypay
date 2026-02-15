@@ -1,18 +1,22 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTradeHistory } from '@/contexts/TradeHistoryContext';
+import BalanceCard from '@/components/BalanceCard';
+import QuickActions from '@/components/QuickActions';
+import HowItWorks from '@/components/HowItWorks';
+import RecentTransactions from '@/components/RecentTransactions';
 
 export default function RootPage() {
-  const router = useRouter();
+  const { trades } = useTradeHistory();
 
-  useEffect(() => {
-    router.replace('/quick-trade');
-  }, [router]);
+  const hasCompletedTrades = trades.length > 0;
 
   return (
-    <div className="flex items-center justify-center py-20">
-      <div className="text-gray-500">Cargando...</div>
-    </div>
+    <>
+      <BalanceCard />
+      <QuickActions />
+      {!hasCompletedTrades && <HowItWorks />}
+      <RecentTransactions />
+    </>
   );
 }

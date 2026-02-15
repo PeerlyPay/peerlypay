@@ -91,6 +91,41 @@ impl P2PContract {
         Ok(order.order_id)
     }
 
+    pub fn create_order_cli(
+        e: Env,
+        caller: Address,
+        fiat_currency_code: u32,
+        payment_method_code: u32,
+        from_crypto: bool,
+        amount: i128,
+        exchange_rate: i128,
+        duration_secs: u64,
+    ) -> Result<u64, ContractError> {
+        let fiat_currency = FiatCurrency::from_code(fiat_currency_code);
+        let payment_method = PaymentMethod::from_code(payment_method_code);
+
+        let order = OrderManager::create_order(
+            &e,
+            caller,
+            fiat_currency,
+            payment_method,
+            from_crypto,
+            amount,
+            exchange_rate,
+            duration_secs,
+        )?;
+
+        OrderCreated {
+            order_id: order.order_id,
+            creator: order.creator,
+            amount: order.amount,
+            from_crypto: order.from_crypto,
+        }
+        .publish(&e);
+
+        Ok(order.order_id)
+    }
+
     pub fn cancel_order(e: Env, caller: Address, order_id: u64) -> Result<(), ContractError> {
         let order = OrderManager::cancel_order(&e, caller.clone(), order_id)?;
         OrderCancelled {
@@ -132,10 +167,18 @@ impl P2PContract {
         caller: Address,
         order_id: u64,
     ) -> Result<(), ContractError> {
-        let _order = OrderManager::execute_fiat_transfer_timeout(&e, caller.clone(), order_id)?;
+        let order = OrderManager::execute_fiat_transfer_timeout(&e, caller.clone(), order_id)?;
+        let (refunded_to, refund_amount) = if order.from_crypto {
+            (None, 0)
+        } else {
+            (Some(caller.clone()), order.amount)
+        };
+
         FiatTransferTimeout {
             order_id,
             executed_by: caller,
+            refunded_to,
+            refund_amount,
         }
         .publish(&e);
         Ok(())

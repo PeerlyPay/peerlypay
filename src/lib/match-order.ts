@@ -55,7 +55,7 @@ export function findBestMatch(
 
   const candidates = orders.filter((order) => {
     if (order.type !== oppositeType) return false;
-    if (order.status !== 'open') return false;
+    if (order.status !== 'AwaitingFiller') return false;
     if (order.amount < amount) return false;
     if (order.createdBy === userId) return false;
     return true;
@@ -111,7 +111,7 @@ export function estimateQuickTrade(
   const oppositeType: OrderType = userType === 'buy' ? 'sell' : 'buy';
 
   const available = orders.filter(
-    (o) => o.type === oppositeType && o.status === 'open' && o.amount >= amount
+    (o) => o.type === oppositeType && o.status === 'AwaitingFiller' && o.amount >= amount
   );
 
   if (available.length === 0) return null;
@@ -131,6 +131,6 @@ export function estimateQuickTrade(
     fiatAmount,
     fee,
     total: userType === 'buy' ? fiatAmount + fee : fiatAmount - fee,
-    currency: available[0].currency,
+    fiatCurrencyCode: available[0].fiatCurrencyCode,
   };
 }

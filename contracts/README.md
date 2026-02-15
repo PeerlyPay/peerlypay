@@ -48,6 +48,7 @@ It enables trustless payments via smart contracts, securing funds in escrow unti
 
 ## Contents
 
+- [P2P Fastest Path (wallets + deploy + seed)](#p2p-fastest-path-wallets--deploy--seed)
 - [Installing Rust](#installing-rust)
 - [Install the Stellar CLI](#install-stellar-cli)
 - [Configuring the CLI for Testnet](#configuring-the-cli-for-testnet)
@@ -55,6 +56,21 @@ It enables trustless payments via smart contracts, securing funds in escrow unti
 - [Deploy project on Testenet](#deploy-project-on-testnet)
 - [Contracts Overview](#contracts-overview)
 - [P2P Contract](#p2p-contract)
+
+## P2P Fastest Path (wallets + deploy + seed)
+
+From `contracts/` run one command:
+
+```bash
+make p2p-quickstart NETWORK=testnet
+```
+
+Notes:
+- Defaults:
+  - `SOURCE=admin`
+  - `P2P_ALIAS=p2p`
+  - `ARS_RATE_BASE=1475`
+- Use `make p2p-seed-orders-small NETWORK=testnet` for a smaller seed.
 
 ## Installing Rust
 
@@ -160,32 +176,85 @@ You can use this [link](https://stellar.expert/explorer/testnet) to verify the i
 ## Deploy Project on Testnet
 
 
-## Quickstart via Makefile (2-step deploy + init)
+## Quickstart via Makefiles
 
-This repository includes a Makefile under `contracts/` to run a simple flow:
+The root `contracts/Makefile` forwards contract targets and includes wallet bootstrap helpers.
+Contract-specific logic lives in:
 
-1) Deploy a new escrow contract instance.
-2) Initialize it with `initialize_escrow`.
+- `contracts/contracts/escrow/Makefile`
+- `contracts/contracts/p2p/Makefile`
 
-### Available targets
+### Root forwarding targets
 
 ```bash
 make help
-make contract-build
-make contract-install-escrow NETWORK=testnet SOURCE=alice
+
+# Wallet bootstrap (testnet only)
+make wallets-bootstrap NETWORK=testnet
+make wallets-bootstrap-escrow NETWORK=testnet
+make wallets-bootstrap-p2p NETWORK=testnet
+make wallets-trustline NETWORK=testnet
+
+# Escrow
+make escrow-build
+make escrow-install NETWORK=testnet SOURCE=alice
 make escrow-deploy NETWORK=testnet SOURCE=alice
 make escrow-build-payload NETWORK=testnet ...
 make escrow-init NETWORK=testnet SOURCE=alice
 make escrow-get NETWORK=testnet SOURCE=alice
-make run-simple-escrow-flow
+make escrow-flow
+
+# P2P
+make p2p-build
+make p2p-install NETWORK=testnet SOURCE=admin
+make p2p-deploy NETWORK=testnet SOURCE=admin
+make p2p-init NETWORK=testnet SOURCE=admin ADMIN=G... DISPUTE_RESOLVER=G... PAUSER=G... TOKEN_CONTRACT_ID=C...
+make p2p-config NETWORK=testnet SOURCE=admin
+make p2p-flow
 ```
 
-### One-command happy path (deploy -> init -> fund -> complete -> approve -> release)
+### Wallet bootstrap and fail-fast behavior
 
-If you already have the key aliases `admin`, `contractor`, and `freelancer` configured in Stellar CLI:
+- Flow targets (`make escrow-flow`, `make p2p-flow`) now fail fast if required key aliases are missing.
+- Use one of the bootstrap commands above to create aliases and fund them through Friendbot.
+- Bootstrap also creates a USDC trustline by default for the required aliases.
+- Friendbot bootstrap is intentionally restricted to `NETWORK=testnet`.
+
+Trustline defaults:
+- `ASSET_CODE=USDC`
+- `ASSET_ISSUER=GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5`
+
+Example (set up only P2P aliases plus trustlines):
 
 ```bash
-make run-simple-escrow-flow
+make wallets-bootstrap-p2p NETWORK=testnet
+```
+
+Manual trustline command used by the Makefile:
+
+```bash
+stellar tx new change-trust \
+  --source-account creator \
+  --line "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5" \
+  --network testnet
+```
+
+Required aliases by flow:
+- Escrow flow: `admin`, `contractor`, `freelancer`
+- P2P flow: `admin`, `creator`, `filler`
+
+### Escrow one-command happy path
+
+If you do not have aliases yet, bootstrap first:
+
+```bash
+make wallets-bootstrap-escrow NETWORK=testnet
+```
+
+Then run:
+
+```bash
+make escrow-flow
 ```
 
 Defaults used by the script:
@@ -198,40 +267,43 @@ Defaults used by the script:
 You can override any of these:
 
 ```bash
-NETWORK=testnet TOKEN_CONTRACT_ID=C... make run-simple-escrow-flow
+NETWORK=testnet TOKEN_CONTRACT_ID=C... make escrow-flow
 ```
 
-### Minimal example
+### P2P one-command happy path
+
+If you do not have aliases yet, bootstrap first:
 
 ```bash
-make contract-build
-make contract-install-escrow NETWORK=testnet SOURCE=alice
-make escrow-deploy NETWORK=testnet SOURCE=alice
+make wallets-bootstrap-p2p NETWORK=testnet
+```
 
-make escrow-build-payload \
-  NETWORK=testnet \
-  ENGAGEMENT_ID=order_001 \
-  TITLE="P2P Trade #001" \
-  DESCRIPTION="USDC/ARS escrow" \
-  AMOUNT=100000000 \
-  PLATFORM_FEE_BPS=100 \
-  TOKEN_CONTRACT_ID=CB...TOKEN \
-  APPROVER=G...APPROVER \
-  SERVICE_PROVIDER=G...SERVICE \
-  PLATFORM_ADDRESS=G...PLATFORM \
-  RELEASE_SIGNER=G...RELEASE \
-  DISPUTE_RESOLVER=G...DISPUTE \
-  RECEIVER=G...RECEIVER
+Then run:
 
-make escrow-init NETWORK=testnet SOURCE=alice
-make escrow-get NETWORK=testnet SOURCE=alice
+```bash
+make p2p-flow
+```
+
+Defaults used by the script:
+- `NETWORK=testnet`
+- `TOKEN_CONTRACT_ID=CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`
+- `ADMIN_ALIAS=admin`
+- `CREATOR_ALIAS=creator`
+- `FILLER_ALIAS=filler`
+- `FIAT_CURRENCY_CODE=0` (`Usd`)
+- `PAYMENT_METHOD_CODE=0` (`BankTransfer`)
+
+You can override any of these:
+
+```bash
+NETWORK=testnet TOKEN_CONTRACT_ID=C... FIAT_CURRENCY_CODE=1 PAYMENT_METHOD_CODE=2 AMOUNT=10000000 make p2p-flow
 ```
 
 Notes:
 - Generated deployment artifacts are stored in `.artifacts/<network>/`.
-- You can override `ESCROW_WASM_HASH` and `ESCROW_CONTRACT_ID` directly from env.
-- `MILESTONES_JSON` is optional; if omitted, one default `Pending` milestone is generated.
-- The payload builder serializes Soroban `i128` fields (for example `amount`, `receiver_memo`) as strings for CLI compatibility.
+- You can override `ESCROW_WASM_HASH`, `ESCROW_CONTRACT_ID`, `P2P_WASM_HASH`, and `P2P_CONTRACT_ID` directly from env.
+- `MILESTONES_JSON` is optional for escrow; if omitted, one default `Pending` milestone is generated.
+- The escrow payload builder serializes Soroban `i128` fields (for example `amount`, `receiver_memo`) as strings for CLI compatibility.
 
 
 ## Contracts Overview
@@ -270,6 +342,7 @@ Additional terminal/branch states:
 - `initialize`
 - `pause` / `unpause`
 - `create_order`
+- `create_order_cli` (CLI-friendly numeric codes for fiat currency and payment method)
 - `cancel_order`
 - `take_order`
 - `submit_fiat_payment`
@@ -295,7 +368,7 @@ Run only P2P tests:
 cargo test -p p2p
 ```
 
-Note: Makefile automation currently targets escrow flows. For P2P, use direct `cargo` and `stellar contract invoke` commands.
+Note: P2P now has Makefile automation in `contracts/contracts/p2p/Makefile`, and root forwarding targets in `contracts/Makefile`.
 
 
 

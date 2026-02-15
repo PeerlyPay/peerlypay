@@ -146,6 +146,10 @@ impl OrderManager {
             ensure_creator(&order, &caller)?;
         } else {
             ensure_filler(&order, &caller)?;
+
+            let filler = order.filler.clone().ok_or(ContractError::MissingFiller)?;
+            let token_client = TokenClient::new(e, &config.token);
+            token_client.transfer(&e.current_contract_address(), &filler, &order.amount);
         }
 
         order.status = OrderStatus::AwaitingFiller;
