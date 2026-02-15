@@ -3,8 +3,8 @@ import type { Order, OrderType, MatchOrderResult, MatchedMaker } from '@/types';
 /** Platform fee percentage (0.5%) */
 const FEE_RATE = 0.005;
 const ORDER_EXPIRY_BUFFER_MS = 120_000;
-const PRICE_WEIGHT = 0.7;
-const SIZE_WEIGHT = 0.3;
+const PRICE_WEIGHT = 0.2;
+const SIZE_WEIGHT = 0.8;
 
 function isOrderAvailableForMatch(order: Order): boolean {
   const createdAtMs = order.createdAt instanceof Date ? order.createdAt.getTime() : Number.NaN;
@@ -91,7 +91,9 @@ export function findBestMatch(
         : (order.rate - minRate) / rateSpan;
 
     // Full-order fills only: closer order size to requested amount is better.
-    const sizeScore = Math.max(0, Math.min(1, amount / order.amount));
+    // Candidates are already filtered to order.amount <= amount, so order.amount / amount
+    // gives a 0..1 closeness score where 1 is an exact fill.
+    const sizeScore = Math.max(0, Math.min(1, order.amount / amount));
 
     return PRICE_WEIGHT * priceScore + SIZE_WEIGHT * sizeScore;
   };
@@ -158,7 +160,7 @@ export function estimateQuickTrade(
         ? (maxRate - order.rate) / rateSpan
         : (order.rate - minRate) / rateSpan;
 
-    const sizeScore = Math.max(0, Math.min(1, amount / order.amount));
+    const sizeScore = Math.max(0, Math.min(1, order.amount / amount));
 
     return PRICE_WEIGHT * priceScore + SIZE_WEIGHT * sizeScore;
   };

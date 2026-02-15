@@ -18,7 +18,7 @@ export default function BalanceCard() {
   });
 
   return (
-    <div className="mt-6 flex w-full flex-col items-center justify-center rounded-[10px] border border-[#e5e5e5] bg-[#f9fafb] p-5 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
+    <div className="bg-balance-soft-fuchsia mt-6 flex w-full flex-col items-center justify-center rounded-[10px] border border-[#efdff3] p-5 shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1)]">
       <div className="flex w-full flex-col items-center justify-center gap-0 p-2.5">
         <div className="flex flex-col items-center">
           <p className="font-sans text-[10px] font-semibold uppercase leading-[1.5] tracking-[0.5px] text-[#585d69]">
