@@ -72,7 +72,7 @@ export default function RecentTransactions() {
               className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 transition-colors hover:bg-gray-50"
             >
               <div className="flex items-center gap-3">
-                <CircleDollarSign className="h-5 w-5 shrink-0 text-primary-500" aria-hidden />
+                <CircleDollarSign className="h-5 w-5 shrink-0 text-[#4F46E5]" aria-hidden />
                 <div>
                   <p className="text-sm font-medium text-gray-900">{tx.title}</p>
                   <p className="text-xs text-gray-400">{tx.date}</p>
