@@ -10,7 +10,7 @@ export default function Header() {
         {/* Logo */}
         <div className="flex items-center gap-2 min-w-0">
           <Image
-            src="/x_icon_black.png"
+            src="/icon-fuchsia.svg"
             alt="PeerlyPay"
             width={28}
             height={28}
