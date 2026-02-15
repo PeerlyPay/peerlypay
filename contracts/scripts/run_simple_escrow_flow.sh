@@ -3,6 +3,8 @@ set -euo pipefail
 
 NETWORK="${NETWORK:-testnet}"
 TOKEN_CONTRACT_ID="${TOKEN_CONTRACT_ID:-CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ESCROW_DIR="${ROOT_DIR}/contracts/escrow"
 
 ADMIN_ALIAS="${ADMIN_ALIAS:-admin}"
 CONTRACTOR_ALIAS="${CONTRACTOR_ALIAS:-contractor}"
@@ -16,7 +18,7 @@ DESCRIPTION="${DESCRIPTION:-Simple single-release test}"
 MILESTONE_STATUS="${MILESTONE_STATUS:-Completed}"
 MILESTONE_EVIDENCE="${MILESTONE_EVIDENCE:-Delivered test artifact}"
 
-ARTIFACTS_DIR=".artifacts/${NETWORK}"
+ARTIFACTS_DIR="${ROOT_DIR}/.artifacts/${NETWORK}"
 PAYLOAD_FILE="${ARTIFACTS_DIR}/escrow_init_payload.json"
 CONTRACT_ID_FILE="${ARTIFACTS_DIR}/escrow_contract_id.txt"
 
@@ -34,9 +36,9 @@ echo "Freelancer: ${FREELANCER_ADDR}"
 echo "Token contract: ${TOKEN_CONTRACT_ID}"
 
 echo "== Build / install / deploy escrow contract =="
-make contract-build
-make contract-install-escrow NETWORK="${NETWORK}" SOURCE="${ADMIN_ALIAS}"
-make escrow-deploy NETWORK="${NETWORK}" SOURCE="${ADMIN_ALIAS}"
+make -C "${ESCROW_DIR}" contract-build
+make -C "${ESCROW_DIR}" contract-install-escrow NETWORK="${NETWORK}" SOURCE="${ADMIN_ALIAS}"
+make -C "${ESCROW_DIR}" escrow-deploy NETWORK="${NETWORK}" SOURCE="${ADMIN_ALIAS}"
 
 if [[ ! -f "${CONTRACT_ID_FILE}" ]]; then
   echo "Missing contract id file at ${CONTRACT_ID_FILE}"
@@ -47,7 +49,7 @@ ESCROW_CONTRACT_ID="$(cat "${CONTRACT_ID_FILE}")"
 echo "Escrow contract id: ${ESCROW_CONTRACT_ID}"
 
 echo "== Build escrow payload =="
-make escrow-build-payload \
+make -C "${ESCROW_DIR}" escrow-build-payload \
   NETWORK="${NETWORK}" \
   ENGAGEMENT_ID="${ENGAGEMENT_ID}" \
   TITLE="${TITLE}" \
@@ -64,7 +66,7 @@ make escrow-build-payload \
   MILESTONES_JSON='[{"description":"Deliver work","status":"Pending","evidence":"","approved":false}]'
 
 echo "== Initialize escrow (admin) =="
-make escrow-init NETWORK="${NETWORK}" SOURCE="${ADMIN_ALIAS}"
+make -C "${ESCROW_DIR}" escrow-init NETWORK="${NETWORK}" SOURCE="${ADMIN_ALIAS}"
 
 if [[ ! -f "${PAYLOAD_FILE}" ]]; then
   echo "Missing payload file at ${PAYLOAD_FILE}"
