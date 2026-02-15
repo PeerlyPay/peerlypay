@@ -210,7 +210,7 @@ function SuccessContent() {
       <div className="flex items-center justify-end px-4 pt-4 pb-0">
         <button
           type="button"
-          onClick={() => router.push('/quick-trade')}
+          onClick={() => router.push('/')}
           className="flex items-center justify-center size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
         >
           <X className="size-5 text-gray-500" />
@@ -384,7 +384,7 @@ function SuccessContent() {
         </button>
         <button
           type="button"
-          onClick={() => router.push('/quick-trade')}
+          onClick={() => router.push('/')}
           className="w-full h-10 font-[family-name:var(--font-space-grotesk)] text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors"
         >
           Volver al inicio

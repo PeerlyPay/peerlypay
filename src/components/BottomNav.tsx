@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Home, ClipboardList, User } from 'lucide-react';
 
 const tabs = [
-  { href: '/quick-trade', icon: Home, label: 'Home' },
+  { href: '/', icon: Home, label: 'Home' },
   { href: '/orders', icon: ClipboardList, label: 'Orders' },
   { href: '/profile', icon: User, label: 'Profile' },
 ];

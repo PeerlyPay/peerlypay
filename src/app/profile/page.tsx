@@ -1,22 +1,55 @@
 "use client";
 
 import { useState } from "react";
-import { useUser } from "@/contexts/UserContext";
-import {
-  User,
-  Copy,
-  Check,
-  PencilLine,
-  Share2,
-  Wallet,
-  CalendarDays,
-  LogOut,
-} from "lucide-react";
+import { Copy, Check, Wallet, CalendarDays, LogOut } from "lucide-react";
 import { toast } from "sonner";
+
+import EditProfileDrawer, {
+  type EditableProfile,
+} from "@/components/profile/EditProfileDrawer";
+import ProfileAvatarModal from "@/components/profile/ProfileAvatarModal";
+import ShareProfileDrawer from "@/components/profile/ShareProfileDrawer";
+import { useUser } from "@/contexts/UserContext";
+import { useStore } from "@/lib/store";
+
+const PROFILE_OVERRIDES_STORAGE_KEY = "peerlypay_profile_overrides";
+
+type ProfileOverrides = Record<
+  string,
+  {
+    displayName: string;
+    handle: string;
+  }
+>;
 
 export default function ProfilePage() {
   const { user, loading } = useUser();
+  const connectedWalletAddress = useStore((s) => s.user.walletAddress);
   const [copied, setCopied] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [isShareDrawerOpen, setIsShareDrawerOpen] = useState(false);
+  const [profileOverrides, setProfileOverrides] = useState<ProfileOverrides>(
+    () => {
+      if (typeof window === "undefined") {
+        return {};
+      }
+
+      try {
+        const stored = localStorage.getItem(PROFILE_OVERRIDES_STORAGE_KEY);
+        if (!stored) {
+          return {};
+        }
+
+        const parsed = JSON.parse(stored);
+        return typeof parsed === "object" && parsed !== null ? parsed : {};
+      } catch {
+        return {};
+      }
+    },
+  );
+  const [profileBios, setProfileBios] = useState<Record<string, string>>({});
+  const activeWalletAddress = connectedWalletAddress;
 
   const createdDate = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", {
@@ -26,30 +59,43 @@ export default function ProfilePage() {
       })
     : "—";
 
-  const shortWallet = user?.walletAddress
-    ? `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}`
+  const shortWallet = activeWalletAddress
+    ? `${activeWalletAddress.slice(0, 6)}...${activeWalletAddress.slice(-4)}`
     : "Not connected";
 
-  const displayName = user?.walletAddress
-    ? `Peerly ${user.walletAddress.slice(2, 6).toLowerCase()}`
+  const defaultDisplayName = activeWalletAddress
+    ? `Peerly ${activeWalletAddress.slice(2, 6).toLowerCase()}`
     : "Guest user";
 
-  const handle = user?.walletAddress
-    ? `@${user.walletAddress.slice(4, 10).toLowerCase()}`
+  const defaultHandle = activeWalletAddress
+    ? `@${activeWalletAddress.slice(4, 10).toLowerCase()}`
     : "@guest";
 
-  const trustScore = user?.walletAddress
-    ? (parseInt(user.walletAddress.slice(2, 6), 36) % 31) + 69
+  const defaultBio = user
+    ? "Fast, secure P2P trading on PeerlyPay."
+    : "Create your profile to start trading on PeerlyPay.";
+
+  const profileStorageKey = activeWalletAddress ?? "guest";
+  const storedProfile = profileOverrides[profileStorageKey];
+
+  const currentProfile = {
+    displayName: storedProfile?.displayName ?? defaultDisplayName,
+    handle: storedProfile?.handle ?? defaultHandle,
+    bio: profileBios[profileStorageKey] ?? defaultBio,
+  };
+
+  const trustScore = activeWalletAddress
+    ? (parseInt(activeWalletAddress.slice(2, 6), 36) % 31) + 69
     : 75;
 
   const handleCopyWallet = async () => {
-    if (!user?.walletAddress) {
+    if (!activeWalletAddress) {
       toast.error("No wallet connected");
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(user.walletAddress);
+      await navigator.clipboard.writeText(activeWalletAddress);
       setCopied(true);
       toast.success("Wallet copied");
       setTimeout(() => setCopied(false), 2000);
@@ -60,6 +106,33 @@ export default function ProfilePage() {
 
   const handleComingSoon = (label: string) => {
     toast.info(`${label} coming soon`);
+  };
+
+  const handleSaveProfile = (nextProfile: EditableProfile) => {
+    const nextProfileOverrides = {
+      ...profileOverrides,
+      [profileStorageKey]: {
+        displayName: nextProfile.displayName,
+        handle: nextProfile.handle,
+      },
+    };
+
+    setProfileOverrides(nextProfileOverrides);
+    setProfileBios((current) => ({
+      ...current,
+      [profileStorageKey]: nextProfile.bio,
+    }));
+
+    try {
+      localStorage.setItem(
+        PROFILE_OVERRIDES_STORAGE_KEY,
+        JSON.stringify(nextProfileOverrides),
+      );
+    } catch {
+      toast.error("Failed to persist profile changes");
+    }
+
+    toast.success("Profile updated");
   };
 
   if (loading) {
@@ -73,42 +146,42 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-7 py-4">
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="h-32 bg-gradient-to-r from-fuchsia-500 to-fuchsia-400" />
 
-        <div className="px-5 pb-7">
-          <div className="-mt-7 mb-5 flex items-end justify-between">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-fuchsia-500 text-white shadow-sm">
-              <User className="h-7 w-7" />
-            </div>
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => handleComingSoon("Edit profile")}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                <PencilLine className="size-3.5" />
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => handleComingSoon("Share profile")}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                <Share2 className="size-3.5" />
-                Share
-              </button>
-            </div>
-          </div>
+        <div className="absolute top-32 left-5 z-10 -translate-y-1/2">
+          <ProfileAvatarModal
+            open={isAvatarModalOpen}
+            onOpenChange={setIsAvatarModalOpen}
+          />
+        </div>
 
-          <div className="pt-2">
-            <p className="text-xl font-semibold text-gray-900">{displayName}</p>
-            <p className="text-sm text-gray-500">{handle}</p>
-            <p className="mt-2.5 text-sm leading-relaxed text-gray-600">
-              {user
-                ? "Fast, secure P2P trading on PeerlyPay."
-                : "Create your profile to start trading on PeerlyPay."}
-            </p>
+        <div className="px-5 pb-7 pt-10">
+          <div className="mb-5 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xl font-semibold text-gray-900">
+                {currentProfile.displayName}
+              </p>
+              <p className="text-sm text-gray-500">{currentProfile.handle}</p>
+              <p className="mt-2.5 text-sm leading-relaxed text-gray-600">
+                {currentProfile.bio}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <EditProfileDrawer
+                open={isEditDrawerOpen}
+                onOpenChange={setIsEditDrawerOpen}
+                initialProfile={currentProfile}
+                onSave={handleSaveProfile}
+              />
+              <ShareProfileDrawer
+                open={isShareDrawerOpen}
+                onOpenChange={setIsShareDrawerOpen}
+                displayName={currentProfile.displayName}
+                handle={currentProfile.handle}
+              />
+            </div>
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-3">

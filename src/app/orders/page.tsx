@@ -19,12 +19,12 @@ import EmptyState from '@/components/EmptyState';
 import FadeIn from '@/components/FadeIn';
 import { cn } from '@/lib/utils';
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet';
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from '@/components/ui/drawer';
 
 // ============================================
 // TYPES
@@ -304,25 +304,17 @@ function TradeDetailSheet({
     : true;
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="rounded-t-2xl max-h-[90dvh] overflow-y-auto p-0"
-      >
+    <Drawer open={open} onOpenChange={(v) => !v && onClose()} direction="bottom">
+      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 rounded-t-2xl max-h-[90dvh] overflow-y-auto border-gray-200 bg-white p-0">
         <div className="px-5 pt-4 pb-8 space-y-5">
-          {/* Drag handle */}
-          <div className="flex justify-center">
-            <div className="w-10 h-1 rounded-full bg-gray-300" />
-          </div>
-
-          <SheetHeader className="space-y-1">
-            <SheetTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
+          <DrawerHeader className="space-y-1 px-0 pt-0">
+            <DrawerTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
               Trade Details
-            </SheetTitle>
-            <SheetDescription className="sr-only">
+            </DrawerTitle>
+            <DrawerDescription className="sr-only">
               Full transaction details
-            </SheetDescription>
-          </SheetHeader>
+            </DrawerDescription>
+          </DrawerHeader>
 
           {/* Status */}
           <div className="flex justify-center">
@@ -513,8 +505,8 @@ function TradeDetailSheet({
             )}
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
@@ -665,23 +657,15 @@ function FilterSheet({
   const hasDraftFilters = countActiveFilters(draft) > 0;
 
   return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent
-        side="bottom"
-        className="rounded-t-2xl max-h-[85dvh] overflow-y-auto p-0"
-      >
+    <Drawer open={open} onOpenChange={(v) => !v && onClose()} direction="bottom">
+      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 rounded-t-2xl max-h-[85dvh] overflow-y-auto border-gray-200 bg-white p-0">
         <div className="px-5 pt-4 pb-8 space-y-6">
-          {/* Drag handle */}
-          <div className="flex justify-center">
-            <div className="w-10 h-1 rounded-full bg-gray-300" />
-          </div>
-
           {/* Header */}
-          <SheetHeader className="space-y-0">
+          <DrawerHeader className="space-y-0 px-0 pt-0">
             <div className="flex items-center justify-between">
-              <SheetTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
+              <DrawerTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
                 Filters
-              </SheetTitle>
+              </DrawerTitle>
               <div className="flex items-center gap-3">
                 {hasDraftFilters && (
                   <button
@@ -701,10 +685,10 @@ function FilterSheet({
                 </button>
               </div>
             </div>
-            <SheetDescription className="sr-only">
+            <DrawerDescription className="sr-only">
               Filter your trades by status, type, and date range
-            </SheetDescription>
-          </SheetHeader>
+            </DrawerDescription>
+          </DrawerHeader>
 
           {/* Status */}
           <div>
@@ -790,8 +774,8 @@ function FilterSheet({
             </button>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DrawerContent>
+    </Drawer>
   );
 }
 
