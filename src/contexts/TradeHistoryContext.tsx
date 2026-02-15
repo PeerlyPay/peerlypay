@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 
 export interface CompletedTrade {
   id: string;
+  type: 'buy' | 'sell';
   amount: number;
   arsReceived: number;
   rate: number;

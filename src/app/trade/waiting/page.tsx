@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useCallback } from 'react';
+import { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useWallet } from '@crossmint/client-sdk-react-ui';
 import {
@@ -12,11 +12,12 @@ import { toast } from 'sonner';
 import TradeChatDrawer from '@/components/trade/TradeChatDrawer';
 import { confirmFiatPaymentWithCrossmint } from '@/lib/p2p-crossmint';
 import { loadChainOrderByIdFromContract } from '@/lib/p2p';
-import type { P2POrderStatus } from '@/types';
+import type { ChainOrder, P2POrderStatus } from '@/types';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 const POLL_INTERVAL_MS = 5000;
+const TOKEN_SCALE = 10_000_000;
 
 // ============================================
 // WAITING CONTENT
@@ -29,15 +30,15 @@ function WaitingContent() {
   const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
 
   const amount = parseFloat(searchParams.get('amount') || '0.11');
+  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
   const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
   const orderId = searchParams.get('orderId') || '';
-  const isTakerSeller = mode === 'sell';
 
   const [isChecking, setIsChecking] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [orderStatus, setOrderStatus] = useState<P2POrderStatus | null>(null);
+  const [order, setOrder] = useState<ChainOrder | null>(null);
   const [makerLabel, setMakerLabel] = useState('counterparty');
-  const makerHandle = makerLabel.startsWith('@') ? makerLabel : `@${makerLabel}`;
 
   const pollOrder = useCallback(async () => {
     if (!orderId) {
@@ -47,19 +48,21 @@ function WaitingContent() {
     setIsChecking(true);
 
     try {
-      const order = await loadChainOrderByIdFromContract(orderId);
-      setOrderStatus(order.status);
-      setMakerLabel(`${order.creator.slice(0, 6)}...${order.creator.slice(-4)}`);
+      const nextOrder = await loadChainOrderByIdFromContract(orderId);
+      setOrder(nextOrder);
+      setOrderStatus(nextOrder.status);
+      setMakerLabel(`${nextOrder.creator.slice(0, 6)}...${nextOrder.creator.slice(-4)}`);
 
-      if (order.status === 'Completed') {
-        router.push(`/trade/success?amount=${amount}&mode=${mode}&orderId=${orderId}`);
+      if (nextOrder.status === 'Completed') {
+        const executedAmount = Number(nextOrder.amount) / TOKEN_SCALE;
+        router.push(`/trade/success?amount=${executedAmount.toFixed(2)}&requestedAmount=${requestedAmount.toFixed(2)}&mode=${mode}&orderId=${orderId}`);
       }
     } catch (error) {
       console.error('Failed to poll order status', error);
     } finally {
       setIsChecking(false);
     }
-  }, [amount, mode, orderId, router]);
+  }, [mode, orderId, requestedAmount, router]);
 
   useEffect(() => {
     void pollOrder();
@@ -98,6 +101,111 @@ function WaitingContent() {
     }
   }, [orderId, pollOrder, refreshOrdersFromChain, wallet, walletAddress]);
 
+  const userIsCreator = useMemo(() => {
+    if (!walletAddress || !order) {
+      return false;
+    }
+
+    return walletAddress === order.creator;
+  }, [order, walletAddress]);
+
+  const userIsFiller = useMemo(() => {
+    if (!walletAddress || !order?.filler) {
+      return false;
+    }
+
+    return walletAddress === order.filler;
+  }, [order, walletAddress]);
+
+  const userIsCryptoSeller = useMemo(() => {
+    if (!order) {
+      return mode === 'sell';
+    }
+
+    return order.from_crypto ? userIsCreator : userIsFiller;
+  }, [mode, order, userIsCreator, userIsFiller]);
+
+  const canConfirmPaymentReceipt =
+    orderStatus === 'AwaitingConfirmation' && userIsCryptoSeller;
+  const showVerifyPaymentButton =
+    userIsCryptoSeller &&
+    (orderStatus === 'AwaitingPayment' || orderStatus === 'AwaitingConfirmation');
+  const verifyPaymentLabel = isConfirming
+    ? 'Confirming...'
+    : canConfirmPaymentReceipt
+      ? 'Confirm payment received'
+      : 'Waiting for buyer payment';
+
+  const counterpartyLabel = useMemo(() => {
+    if (!order) {
+      return makerLabel;
+    }
+
+    if (userIsCreator) {
+      if (!order.filler) {
+        return 'counterparty';
+      }
+
+      return `${order.filler.slice(0, 6)}...${order.filler.slice(-4)}`;
+    }
+
+    return `${order.creator.slice(0, 6)}...${order.creator.slice(-4)}`;
+  }, [makerLabel, order, userIsCreator]);
+
+  const statusContent = useMemo(() => {
+    if (orderStatus === 'AwaitingPayment') {
+      if (userIsCryptoSeller) {
+        return {
+          header: 'Waiting for Buyer Payment',
+          title: 'Waiting for buyer payment',
+          body: 'The buyer needs to send fiat and mark payment as sent.',
+          note: 'After that, you will verify receipt before releasing USDC.',
+        };
+      }
+
+      return {
+        header: 'Send Payment',
+        title: 'Complete your fiat payment',
+        body: 'Send the transfer and mark it as sent to continue the trade.',
+        note: 'The seller will verify your payment before release.',
+      };
+    }
+
+    if (orderStatus === 'AwaitingConfirmation') {
+      if (userIsCryptoSeller) {
+        return {
+          header: 'Verify Payment',
+          title: 'Verify fiat payment received',
+          body: 'Check your bank or wallet and confirm once funds arrive.',
+          note: 'Confirming will release USDC from escrow.',
+        };
+      }
+
+      return {
+        header: 'Waiting for Seller Confirmation',
+        title: 'Waiting for seller confirmation',
+        body: 'Seller is verifying your payment.',
+        note: 'Once confirmed, your USDC will be released.',
+      };
+    }
+
+    if (orderStatus === 'Completed') {
+      return {
+        header: 'Trade Completed',
+        title: 'Trade completed',
+        body: 'The order has been finalized on-chain.',
+        note: 'Redirecting to success...',
+      };
+    }
+
+    return {
+      header: 'Syncing Trade Status',
+      title: 'Syncing trade status',
+      body: 'Fetching current contract state for this order.',
+      note: 'Please keep this screen open.',
+    };
+  }, [orderStatus, userIsCryptoSeller]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white">
       {/* Header */}
@@ -110,7 +218,7 @@ function WaitingContent() {
           <ArrowLeft className="size-5 text-gray-900" />
         </button>
         <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-gray-900">
-          Waiting for Confirmation
+          {statusContent.header}
         </h2>
       </div>
 
@@ -136,13 +244,13 @@ function WaitingContent() {
           </div>
 
           <h3 className="font-[family-name:var(--font-space-grotesk)] text-xl font-bold text-gray-900 mb-1.5">
-            Waiting for confirmation
+            {statusContent.title}
           </h3>
           <p className="text-body-sm text-gray-500 mb-1">
-            Seller is verifying your payment
+            {statusContent.body}
           </p>
           <p className="text-caption text-gray-400 mb-5">
-            Once confirmed, your USDC will be released
+            {statusContent.note}
           </p>
 
           {/* Polling indicator */}
@@ -165,20 +273,20 @@ function WaitingContent() {
 
       {/* Bottom Actions */}
       <div className="p-4 pb-6 border-t border-gray-100 space-y-3">
-        {isTakerSeller && orderStatus === 'AwaitingConfirmation' && (
+        {showVerifyPaymentButton && (
           <button
             type="button"
             onClick={handleConfirmReceipt}
-            disabled={isConfirming}
+            disabled={!canConfirmPaymentReceipt || isConfirming}
             className="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-white bg-fuchsia-500 hover:bg-fuchsia-600 transition-all active:scale-[0.98] disabled:opacity-70"
           >
-            {isConfirming ? 'Confirming...' : 'Confirm payment received'}
+            {verifyPaymentLabel}
           </button>
         )}
         <TradeChatDrawer
-          key={makerHandle}
-          triggerLabel="Message seller"
-          sellerLabel={makerHandle}
+          key={counterpartyLabel}
+          triggerLabel="Message counterparty"
+          sellerLabel={counterpartyLabel}
           triggerClassName="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-fuchsia-600 border border-fuchsia-200 bg-white hover:bg-fuchsia-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         />
         <button

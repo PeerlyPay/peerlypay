@@ -212,10 +212,22 @@ export default function QuickTradeInput({ initialMode, onClose, showToggle = tru
       return;
     }
 
+    const matchedAmount = match.matchedOrder.amount;
+
+    if (mode === 'sell' && matchedAmount > user.balance.usdc) {
+      setError(`Matched order requires ${formatUsdc(matchedAmount)} USDC, but your balance is lower`);
+      return;
+    }
+
+    if (matchedAmount > USDC_LIMIT) {
+      setError(`Best full order is ${formatUsdc(matchedAmount)} USDC and exceeds the ${USDC_LIMIT} USDC limit`);
+      return;
+    }
+
     router.push(
-      `/trade/confirm?amount=${usdcAmount.toFixed(2)}&mode=${mode}&orderId=${match.matchedOrder.id}`
+      `/trade/confirm?amount=${matchedAmount.toFixed(2)}&requestedAmount=${usdcAmount.toFixed(2)}&mode=${mode}&orderId=${match.matchedOrder.id}`
     );
-  }, [estimate, hasValidAmount, mode, orders, router, usdcAmount, user.walletAddress]);
+  }, [estimate, hasValidAmount, mode, orders, router, usdcAmount, user.balance.usdc, user.walletAddress]);
 
   // ─── Display values ─────────────────────────────
   const displayAmount = inputValue || '0';

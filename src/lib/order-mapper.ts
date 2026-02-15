@@ -1,6 +1,17 @@
 import type { ChainOrder, CreateOrderInput, OrderType, UiOrder } from '@/types';
 import { FiatCurrencyCode, PaymentMethodCode } from '@/types';
 
+const TOKEN_DECIMALS = 7;
+const TOKEN_SCALE = 10 ** TOKEN_DECIMALS;
+
+function tokenAmountFromChain(amount: bigint): number {
+  return Number(amount) / TOKEN_SCALE;
+}
+
+function tokenAmountToChain(amount: number): bigint {
+  return BigInt(Math.round(amount * TOKEN_SCALE));
+}
+
 // Display label dictionaries
 const FIAT_LABELS: Record<number, string> = {
   [FiatCurrencyCode.Usd]: 'USD',
@@ -58,7 +69,7 @@ export function chainToUiOrder(chain: ChainOrder): UiOrder {
     id: chain.order_id.toString(),
     orderId: chain.order_id,
     type: fromCryptoToOrderType(chain.from_crypto),
-    amount: Number(chain.amount),
+    amount: tokenAmountFromChain(chain.amount),
     rate: Number(chain.exchange_rate),
     fiatCurrencyCode: chain.fiat_currency_code,
     fiatCurrencyLabel: fiatCurrencyLabel(chain.fiat_currency_code),
@@ -86,7 +97,7 @@ export function createOrderInputToContractArgs(input: CreateOrderInput): {
     fiat_currency_code: input.fiatCurrencyCode,
     payment_method_code: input.paymentMethodCode,
     from_crypto: orderTypeToFromCrypto(input.type),
-    amount: BigInt(Math.round(input.amount)),
+    amount: tokenAmountToChain(input.amount),
     exchange_rate: BigInt(Math.round(input.rate)),
     duration_secs: input.durationSecs,
   };

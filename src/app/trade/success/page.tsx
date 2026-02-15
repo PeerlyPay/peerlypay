@@ -1,39 +1,34 @@
-'use client';
+"use client";
 
-import { useState, useEffect, Suspense, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  Copy,
-  Check,
-  Star,
-  Wallet,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useTradeHistory } from '@/contexts/TradeHistoryContext';
+import { useState, useEffect, Suspense, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Copy, Check, Star, Wallet } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useTradeHistory } from "@/contexts/TradeHistoryContext";
 
 // Mock trade data
-const MOCK_MAKER = 'crypto_trader_ar';
+const MOCK_MAKER = "crypto_trader_ar";
 const MOCK_RATE = 1_485;
 const FEE_RATE = 0.005;
-const MOCK_TXN_ID = '#TXN123456';
-const MOCK_DURATION = '2m 34s';
+const MOCK_TXN_ID = "#TXN123456";
+const MOCK_DURATION = "2m 34s";
 
 function formatFiat(value: number): string {
-  return value.toLocaleString('es-AR', {
+  return value.toLocaleString("es-AR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
 
 function formatUsdc(value: number): string {
-  return value.toLocaleString('en-US', {
+  return value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
 
 function formatFiatCompact(value: number): string {
-  return value.toLocaleString('es-AR', {
+  return value.toLocaleString("es-AR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
@@ -64,10 +59,10 @@ function StarRating({
         >
           <Star
             className={cn(
-              'size-8 transition-colors',
+              "size-8 transition-colors",
               (hover || value) >= star
-                ? 'fill-amber-400 text-amber-400'
-                : 'fill-transparent text-gray-300'
+                ? "fill-amber-400 text-amber-400"
+                : "fill-transparent text-gray-300",
             )}
           />
         </button>
@@ -84,23 +79,26 @@ function SuccessContent() {
   const searchParams = useSearchParams();
   const { addTrade } = useTradeHistory();
 
-  const amount = parseFloat(searchParams.get('amount') || '0.11');
-  const orderId = searchParams.get('orderId') || '';
+  const amount = parseFloat(searchParams.get("amount") || "0.11");
+  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
+  const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
+  const orderId = searchParams.get("orderId") || "";
   const fiatAmount = amount * MOCK_RATE;
   const feeArs = amount * FEE_RATE * MOCK_RATE;
   const totalPaid = fiatAmount - feeArs;
+  const isAdjustedAmount = Math.abs(requestedAmount - amount) > 0.0001;
 
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const timestamp = useMemo(() => {
-    return new Date().toLocaleString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
+    return new Date().toLocaleString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
       hour12: true,
     });
   }, []);
@@ -112,16 +110,17 @@ function SuccessContent() {
     if (processed) return;
 
     addTrade({
+      type: mode,
       amount,
       arsReceived: totalPaid,
       rate: MOCK_RATE,
       marketMaker: MOCK_MAKER,
-      paymentMethod: 'MercadoPago',
+      paymentMethod: "MercadoPago",
       txnId: MOCK_TXN_ID,
     });
 
-    sessionStorage.setItem(processedKey, 'true');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    sessionStorage.setItem(processedKey, "true");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCopy = async () => {
@@ -169,6 +168,11 @@ function SuccessContent() {
           <p className="text-body-sm text-gray-500">
             Your USDC has been released
           </p>
+          {isAdjustedAmount && (
+            <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Full-order fill applied: requested {formatUsdc(requestedAmount)} USDC, executed {formatUsdc(amount)} USDC.
+            </p>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -211,10 +215,10 @@ function SuccessContent() {
                     type="button"
                     onClick={handleCopy}
                     className={cn(
-                      'flex items-center justify-center size-7 rounded-md transition-all active:scale-95',
+                      "flex items-center justify-center size-7 rounded-md transition-all active:scale-95",
                       copied
-                        ? 'bg-emerald-100 text-emerald-600'
-                        : 'bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                        ? "bg-emerald-100 text-emerald-600"
+                        : "bg-white text-gray-400 hover:text-gray-600 hover:bg-gray-100",
                     )}
                   >
                     {copied ? (
@@ -225,7 +229,9 @@ function SuccessContent() {
                   </button>
                 </div>
               </div>
-              <p className="text-caption text-gray-400 mt-2 text-right">{timestamp}</p>
+              <p className="text-caption text-gray-400 mt-2 text-right">
+                {timestamp}
+              </p>
             </div>
           </div>
 
@@ -242,7 +248,10 @@ function SuccessContent() {
             {ratingSubmitted ? (
               <div className="flex flex-col items-center text-center py-2">
                 <div className="flex items-center justify-center size-10 rounded-full bg-emerald-100 mb-2">
-                  <Check className="size-5 text-emerald-600" strokeWidth={2.5} />
+                  <Check
+                    className="size-5 text-emerald-600"
+                    strokeWidth={2.5}
+                  />
                 </div>
                 <p className="text-body-sm font-semibold text-gray-900">
                   Thanks for your rating!
@@ -254,7 +263,8 @@ function SuccessContent() {
             ) : (
               <>
                 <p className="text-body-sm text-gray-500 text-center mb-3">
-                  How was your experience with <strong className="text-gray-900">@{MOCK_MAKER}</strong>?
+                  How was your experience with{" "}
+                  <strong className="text-gray-900">@{MOCK_MAKER}</strong>?
                 </p>
                 <div className="flex justify-center mb-4">
                   <StarRating value={rating} onChange={setRating} />
@@ -278,21 +288,21 @@ function SuccessContent() {
       <div className="p-4 pb-6 border-t border-gray-100 space-y-3">
         <button
           type="button"
-          onClick={() => router.push('/trade')}
+          onClick={() => router.push("/")}
           className="w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white bg-fuchsia-500 shadow-lg shadow-fuchsia-500/25 hover:bg-fuchsia-600 transition-all active:scale-[0.98]"
         >
           Make another trade
         </button>
         <button
           type="button"
-          onClick={() => router.push('/orders')}
+          onClick={() => router.push("/orders")}
           className="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-gray-500 border border-gray-200 bg-white hover:bg-gray-50 transition-all active:scale-[0.98]"
         >
           View my orders
         </button>
         <button
           type="button"
-          onClick={() => router.push('/')}
+          onClick={() => router.push("/")}
           className="w-full h-10 font-[family-name:var(--font-space-grotesk)] text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors"
         >
           Back to home

@@ -36,11 +36,13 @@ function PaymentContent() {
   const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
 
   const amount = parseFloat(searchParams.get('amount') || '100');
+  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
   const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
   const orderId = searchParams.get('orderId') || '';
   const fiatAmount = amount * MOCK_RATE;
   const feeArs = amount * FEE_RATE * MOCK_RATE;
   const totalToPay = fiatAmount - feeArs;
+  const isAdjustedAmount = Math.abs(requestedAmount - amount) > 0.0001;
 
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,14 +78,14 @@ function PaymentContent() {
       });
 
       await refreshOrdersFromChain();
-      router.push(`/trade/waiting?amount=${amount}&mode=${mode}&orderId=${orderId}`);
+      router.push(`/trade/waiting?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
     } catch (error) {
       console.error('Failed to submit fiat payment', error);
       toast.error('Failed to submit fiat payment');
     } finally {
       setIsSubmitting(false);
     }
-  }, [amount, mode, orderId, refreshOrdersFromChain, router, wallet, walletAddress]);
+  }, [amount, mode, orderId, refreshOrdersFromChain, requestedAmount, router, wallet, walletAddress]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white">
@@ -105,6 +107,12 @@ function PaymentContent() {
         <p className="font-[family-name:var(--font-jetbrains-mono)] text-lg font-semibold text-gray-600 tabular-nums mb-8">
           Transfer ${formatFiat(totalToPay)} ARS
         </p>
+
+        {isAdjustedAmount && (
+          <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
+            Full-order fill applied: requested {requestedAmount.toFixed(2)} USDC, matched {amount.toFixed(2)} USDC.
+          </p>
+        )}
 
         {/* Payment Details Card */}
         <div className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-5">

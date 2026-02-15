@@ -21,14 +21,17 @@ function formatAmount(amount: number, currency: string): string {
 }
 
 function mapTrade(trade: CompletedTrade) {
-  // Current flow: user sells USDC → receives ARS
-  const type: TransactionType = 'sale';
+  const type: TransactionType = trade.type === 'buy' ? 'purchase' : 'sale';
+  const isPositive = type === 'purchase';
+  const title = isPositive ? 'USDC Purchase' : 'USDC Sale';
+  const sign = isPositive ? '+' : '-';
+
   return {
     id: trade.id,
     type,
-    title: 'USDC Sale',
-    displayAmount: `-${formatAmount(trade.amount, 'USDC')}`,
-    isPositive: false,
+    title,
+    displayAmount: `${sign}${formatAmount(trade.amount, 'USDC')}`,
+    isPositive,
     date: formatDate(trade.date),
   };
 }
