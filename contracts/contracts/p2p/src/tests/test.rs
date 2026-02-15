@@ -198,6 +198,7 @@ fn test_submit_confirm_from_fiat_releases_to_creator() {
 #[test]
 fn test_timeout_resets_order_to_awaiting_filler() {
     let s = setup();
+    let filler_balance_before = s.token.balance(&s.filler);
 
     set_timestamp(&s.env, 1000);
     let order_id = s.client.create_order(
@@ -211,6 +212,8 @@ fn test_timeout_resets_order_to_awaiting_filler() {
     );
 
     s.client.take_order(&s.filler, &order_id);
+    assert_eq!(s.token.balance(&s.filler), filler_balance_before - 300);
+    assert_eq!(s.token.balance(&s.client.address), 300);
 
     set_timestamp(&s.env, 3000);
     s.client.execute_fiat_transfer_timeout(&s.filler, &order_id);
@@ -219,6 +222,8 @@ fn test_timeout_resets_order_to_awaiting_filler() {
     assert_eq!(order.status, OrderStatus::AwaitingFiller);
     assert_eq!(order.filler, None);
     assert_eq!(order.fiat_transfer_deadline, None);
+    assert_eq!(s.token.balance(&s.filler), filler_balance_before);
+    assert_eq!(s.token.balance(&s.client.address), 0);
 }
 
 #[test]

@@ -1,12 +1,12 @@
 'use client';
 
 import { Check, Clock, Wallet } from 'lucide-react';
-import type { OrderStatus } from '@/types';
+import type { P2POrderStatus } from '@/types';
 
 export interface EscrowStepperProps {
   /** 0 = Setup, 1 = Deposit, 2 = Payment, 3 = Confirm, 4 = Complete */
   currentStep: number;
-  orderStatus: OrderStatus;
+  orderStatus: P2POrderStatus;
 }
 
 const steps = [

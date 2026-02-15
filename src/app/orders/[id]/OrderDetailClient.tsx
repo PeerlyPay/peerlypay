@@ -139,7 +139,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
     setMessages((prev) =>
       addSystemMessage(prev, 'USDC released successfully!')
     );
-    if (order) updateOrderStatus(order.id, 'completed');
+    if (order) updateOrderStatus(order.id, 'Completed');
     setSimStep(4);
     setCountdown(null);
     toast.success('Funds released! Trade completed 🎉');
@@ -288,18 +288,18 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Rate</span>
                     <span className="text-body font-semibold text-dark-500">
-                      {order.rate.toLocaleString()} {order.currency} per USDC
+                      {order.rate.toLocaleString()} {order.fiatCurrencyLabel} per USDC
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Total</span>
                     <span className="text-h4 font-display text-primary-600">
-                      {total.toLocaleString()} {order.currency}
+                      {total.toLocaleString()} {order.fiatCurrencyLabel}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Payment method</span>
-                    <span className="text-body font-semibold text-dark-500">{order.paymentMethod}</span>
+                    <span className="text-body font-semibold text-dark-500">{order.paymentMethodLabel}</span>
                   </div>
                 </div>
               </div>
@@ -345,7 +345,7 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
 
             <FadeIn delay={0.2}>
               <div className="space-y-3">
-                {order.status === 'disputed' && (
+                {order.status === 'Disputed' && (
                   <Button
                     disabled={isUpdating}
                     className="w-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 py-4 text-body font-bold text-white hover:opacity-90 transition-all duration-200 disabled:opacity-70"
@@ -453,12 +453,12 @@ export default function OrderDetailClient({ orderId }: OrderDetailClientProps) {
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Total</span>
                     <span className="text-h4 font-display text-primary-600">
-                      {total.toLocaleString()} {order.currency}
+                      {total.toLocaleString()} {order.fiatCurrencyLabel}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-body-sm font-medium text-gray-600">Payment</span>
-                    <span className="text-body font-semibold text-dark-500">{order.paymentMethod}</span>
+                    <span className="text-body font-semibold text-dark-500">{order.paymentMethodLabel}</span>
                   </div>
                 </div>
               </div>

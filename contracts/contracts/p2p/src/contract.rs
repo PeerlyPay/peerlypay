@@ -167,10 +167,18 @@ impl P2PContract {
         caller: Address,
         order_id: u64,
     ) -> Result<(), ContractError> {
-        let _order = OrderManager::execute_fiat_transfer_timeout(&e, caller.clone(), order_id)?;
+        let order = OrderManager::execute_fiat_transfer_timeout(&e, caller.clone(), order_id)?;
+        let (refunded_to, refund_amount) = if order.from_crypto {
+            (None, 0)
+        } else {
+            (Some(caller.clone()), order.amount)
+        };
+
         FiatTransferTimeout {
             order_id,
             executed_by: caller,
+            refunded_to,
+            refund_amount,
         }
         .publish(&e);
         Ok(())

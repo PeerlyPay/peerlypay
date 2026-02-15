@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Minus, Plus, Loader2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import type { Currency, PaymentMethod, CreateOrderInput } from '@/types';
+import { FiatCurrencyCode, PaymentMethodCode } from '@/types';
+import type { CreateOrderInput } from '@/types';
+import { durationLabel } from '@/lib/order-mapper';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -20,15 +22,23 @@ import {
 
 export interface FormData {
   amount: number;
-  currency: Currency;
+  fiatCurrencyCode: number;
   rate: number;
-  paymentMethod: PaymentMethod;
-  duration: string;
+  paymentMethodCode: number;
+  durationSecs: number;
 }
 
-const CURRENCIES: Currency[] = ['ARS', 'USD'];
-const PAYMENT_METHODS: PaymentMethod[] = ['Bank Transfer', 'MercadoPago'];
-const DURATIONS = ['1 day', '3 days', '7 days'];
+const CURRENCIES = [
+  { label: 'USD', code: FiatCurrencyCode.Usd },
+  { label: 'ARS', code: FiatCurrencyCode.Ars },
+  { label: 'EUR', code: FiatCurrencyCode.Eur },
+];
+const PAYMENT_METHODS = [
+  { label: 'Bank Transfer', code: PaymentMethodCode.BankTransfer },
+  { label: 'Mobile Wallet', code: PaymentMethodCode.MobileWallet },
+  { label: 'Cash', code: PaymentMethodCode.Cash },
+];
+const DURATIONS = [900, 1800, 3600, 86400, 259200, 604800];
 
 interface CreateOrderFormProps {
   orderType: 'buy' | 'sell';
@@ -36,10 +46,10 @@ interface CreateOrderFormProps {
 
 const initialFormData: FormData = {
   amount: 0,
-  currency: 'USD',
+  fiatCurrencyCode: FiatCurrencyCode.Usd,
   rate: 0,
-  paymentMethod: 'Bank Transfer',
-  duration: '1 day',
+  paymentMethodCode: PaymentMethodCode.BankTransfer,
+  durationSecs: 86400,
 };
 
 function NumberField({
@@ -105,7 +115,7 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
       return;
     }
 
-    const { amount, rate, currency, paymentMethod, duration } = formData;
+    const { amount, rate, fiatCurrencyCode, paymentMethodCode, durationSecs } = formData;
     if (amount <= 0) {
       toast.error('Amount must be greater than 0.');
       return;
@@ -114,7 +124,7 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
       toast.error('Rate must be 0 or greater.');
       return;
     }
-    if (!currency || !paymentMethod || !duration) {
+    if (durationSecs <= 0) {
       toast.error('Please complete all required fields.');
       return;
     }
@@ -126,9 +136,9 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
       type: orderType,
       amount,
       rate,
-      currency,
-      paymentMethod,
-      duration,
+      fiatCurrencyCode,
+      paymentMethodCode,
+      durationSecs,
     };
 
     createOrder(input);
@@ -165,16 +175,16 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
             Fiat Currency
           </Label>
           <Select
-            value={formData.currency}
-            onValueChange={(v) => update('currency', v as Currency)}
+            value={String(formData.fiatCurrencyCode)}
+            onValueChange={(v) => update('fiatCurrencyCode', Number(v))}
           >
             <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
               <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent>
               {CURRENCIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
+                <SelectItem key={c.code} value={String(c.code)}>
+                  {c.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -200,16 +210,16 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
             Payment Method
           </Label>
           <Select
-            value={formData.paymentMethod}
-            onValueChange={(v) => update('paymentMethod', v as PaymentMethod)}
+            value={String(formData.paymentMethodCode)}
+            onValueChange={(v) => update('paymentMethodCode', Number(v))}
           >
             <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
               <SelectValue placeholder="Select method" />
             </SelectTrigger>
             <SelectContent>
               {PAYMENT_METHODS.map((m) => (
-                <SelectItem key={m} value={m}>
-                  {m}
+                <SelectItem key={m.code} value={String(m.code)}>
+                  {m.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -220,16 +230,16 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
             Duration
           </Label>
           <Select
-            value={formData.duration}
-            onValueChange={(v) => update('duration', v)}
+            value={String(formData.durationSecs)}
+            onValueChange={(v) => update('durationSecs', Number(v))}
           >
             <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-gray-50">
               <SelectValue placeholder="Select duration" />
             </SelectTrigger>
             <SelectContent>
               {DURATIONS.map((d) => (
-                <SelectItem key={d} value={d}>
-                  {d}
+                <SelectItem key={d} value={String(d)}>
+                  {durationLabel(d)}
                 </SelectItem>
               ))}
             </SelectContent>

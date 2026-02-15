@@ -11,12 +11,20 @@ type TabType = 'active' | 'completed' | 'disputed';
 
 function getOrdersForTab(orders: Order[], tab: TabType): Order[] {
   if (tab === 'active') {
-    return orders.filter((o) => o.status === 'open' || o.status === 'active');
+    return orders.filter(
+      (o) =>
+        o.status === 'Created' ||
+        o.status === 'AwaitingFiller' ||
+        o.status === 'AwaitingPayment' ||
+        o.status === 'AwaitingConfirmation'
+    );
   }
   if (tab === 'completed') {
-    return orders.filter((o) => o.status === 'completed');
+    return orders.filter((o) => o.status === 'Completed');
   }
-  return orders.filter((o) => o.status === 'disputed' || o.status === 'cancelled');
+  return orders.filter(
+    (o) => o.status === 'Disputed' || o.status === 'Cancelled' || o.status === 'Refunded'
+  );
 }
 
 export default function MyOrdersPage() {

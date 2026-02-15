@@ -1,7 +1,42 @@
 export type OrderType = 'buy' | 'sell';
-export type OrderStatus = 'open' | 'active' | 'completed' | 'cancelled' | 'disputed';
-export type PaymentMethod = 'Bank Transfer' | 'MercadoPago';
-export type Currency = 'ARS' | 'USD';
+
+export type P2POrderStatus =
+  | 'Created'
+  | 'AwaitingFiller'
+  | 'AwaitingPayment'
+  | 'AwaitingConfirmation'
+  | 'Completed'
+  | 'Disputed'
+  | 'Refunded'
+  | 'Cancelled';
+
+export const P2P_ORDER_STATUSES: ReadonlyArray<P2POrderStatus> = [
+  'Created',
+  'AwaitingFiller',
+  'AwaitingPayment',
+  'AwaitingConfirmation',
+  'Completed',
+  'Disputed',
+  'Refunded',
+  'Cancelled',
+];
+
+export enum FiatCurrencyCode {
+  Usd = 0,
+  Eur = 1,
+  Ars = 2,
+  Cop = 3,
+  Gbp = 4,
+}
+
+export enum PaymentMethodCode {
+  BankTransfer = 0,
+  MobileWallet = 1,
+  Cash = 2,
+}
+
+export type FiatCurrencyCodeValue = number;
+export type PaymentMethodCodeValue = number;
 
 export interface User {
   walletAddress: string | null;
@@ -16,32 +51,53 @@ export interface User {
   reputation_score?: number;
 }
 
-export interface Order {
+export interface ChainOrder {
+  order_id: bigint;
+  creator: string;
+  filler?: string;
+  amount: bigint;
+  exchange_rate: bigint;
+  from_crypto: boolean;
+  fiat_currency_code: FiatCurrencyCodeValue;
+  payment_method_code: PaymentMethodCodeValue;
+  status: P2POrderStatus;
+  created_at: number;
+  deadline: number;
+  fiat_transfer_deadline?: number;
+}
+
+export interface UiOrder {
   id: string;
+  orderId: bigint;
   type: OrderType;
   amount: number;
   rate: number;
-  currency: Currency;
-  paymentMethod: PaymentMethod;
-  duration: string;
-  status: OrderStatus;
+  fiatCurrencyCode: FiatCurrencyCodeValue;
+  fiatCurrencyLabel: string;
+  paymentMethodCode: PaymentMethodCodeValue;
+  paymentMethodLabel: string;
+  durationSecs: number;
+  durationLabel: string;
+  status: P2POrderStatus;
   createdAt: Date;
   createdBy: string;
-  paymentMethods?: string[];
+  filler?: string;
+  paymentMethodLabels?: string[];
   displayName?: string;
   isVerified?: boolean;
-  /** Mock: order creator's completed trades (Stellar will provide later) */
   reputation_score?: number;
   completionRate?: number;
 }
+
+export type Order = UiOrder;
 
 export interface CreateOrderInput {
   type: OrderType;
   amount: number;
   rate: number;
-  currency: Currency;
-  paymentMethod: PaymentMethod;
-  duration: string;
+  fiatCurrencyCode: FiatCurrencyCodeValue;
+  paymentMethodCode: PaymentMethodCodeValue;
+  durationSecs: number;
 }
 
 export interface MatchOrderInput {
@@ -83,7 +139,7 @@ export interface MatchedMaker {
 }
 
 export interface MatchOrderResult {
-  matchedOrder: Order;
+  matchedOrder: UiOrder;
   maker: MatchedMaker;
   estimatedAmount: number;
   rate: number;
@@ -97,5 +153,5 @@ export interface QuickTradeEstimate {
   fiatAmount: number;
   fee: number;
   total: number;
-  currency: Currency;
+  fiatCurrencyCode: FiatCurrencyCodeValue;
 }
