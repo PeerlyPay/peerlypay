@@ -11,6 +11,7 @@ import {
   Flag,
   RefreshCw,
   SlidersHorizontal,
+  LayoutDashboard,
   X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -861,6 +862,15 @@ function FreelancerTradesView() {
                 {activeFilterCount}
               </span>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/orders/dashboard')}
+            className="flex items-center justify-center size-9 rounded-full bg-gray-100 hover:bg-gray-200 transition-all active:scale-95"
+            aria-label="Contract dashboard"
+            title="Contract dashboard"
+          >
+            <LayoutDashboard className="size-4 text-gray-500" />
           </button>
           <button
             type="button"

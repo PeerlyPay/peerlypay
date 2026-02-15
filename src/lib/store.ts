@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User, Order, CreateOrderInput, P2POrderStatus, FiatCurrencyCode, PaymentMethodCode } from '@/types';
 import { durationLabel, fiatCurrencyLabel, paymentMethodLabel } from '@/lib/order-mapper';
+import { loadOrdersFromContract } from '@/lib/p2p-orders';
 
 interface AppState {
   user: User;
@@ -13,6 +14,7 @@ interface AppState {
   subtractBalance: (amount: number) => boolean;
   createOrder: (input: CreateOrderInput) => void;
   updateOrderStatus: (orderId: string, status: P2POrderStatus) => void;
+  refreshOrdersFromChain: () => Promise<void>;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -217,5 +219,18 @@ export const useStore = create<AppState>((set) => ({
         order.id === orderId ? { ...order, status } : order
       ),
     }));
+  },
+
+  refreshOrdersFromChain: async () => {
+    try {
+      const chainOrders = await loadOrdersFromContract();
+      if (chainOrders.length === 0) {
+        return;
+      }
+
+      set({ orders: chainOrders });
+    } catch (error) {
+      console.error('Failed to refresh orders from contract', error);
+    }
   },
 }));
