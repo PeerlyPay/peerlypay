@@ -1,6 +1,18 @@
 import type { ChainOrder, CreateOrderInput, OrderType, UiOrder } from '@/types';
 import { FiatCurrencyCode, PaymentMethodCode } from '@/types';
 
+const TOKEN_DECIMALS = 7;
+const TOKEN_SCALE = 10 ** TOKEN_DECIMALS;
+
+function tokenAmountFromChain(amount: bigint): number {
+  return Number(amount) / TOKEN_SCALE;
+}
+
+function tokenAmountToChain(amount: number): bigint {
+  return BigInt(Math.round(amount * TOKEN_SCALE));
+}
+
+// Display label dictionaries
 const FIAT_LABELS: Record<number, string> = {
   [FiatCurrencyCode.Usd]: 'USD',
   [FiatCurrencyCode.Eur]: 'EUR',
@@ -24,6 +36,7 @@ const DURATION_LABELS: Record<number, string> = {
   604800: '7 days',
 };
 
+// Code-to-label helpers
 export function fiatCurrencyLabel(code: number): string {
   return FIAT_LABELS[code] ?? `FIAT-${code}`;
 }
@@ -36,6 +49,7 @@ export function durationLabel(durationSecs: number): string {
   return DURATION_LABELS[durationSecs] ?? `${durationSecs}s`;
 }
 
+// Label/code normalization
 export function durationSecsFromLabel(label: string): number {
   const entry = Object.entries(DURATION_LABELS).find(([, value]) => value === label);
   return entry ? Number(entry[0]) : 1800;
@@ -49,12 +63,13 @@ export function fromCryptoToOrderType(fromCrypto: boolean): OrderType {
   return fromCrypto ? 'sell' : 'buy';
 }
 
+// Contract-to-UI mapping
 export function chainToUiOrder(chain: ChainOrder): UiOrder {
   return {
     id: chain.order_id.toString(),
     orderId: chain.order_id,
     type: fromCryptoToOrderType(chain.from_crypto),
-    amount: Number(chain.amount),
+    amount: tokenAmountFromChain(chain.amount),
     rate: Number(chain.exchange_rate),
     fiatCurrencyCode: chain.fiat_currency_code,
     fiatCurrencyLabel: fiatCurrencyLabel(chain.fiat_currency_code),
@@ -69,6 +84,7 @@ export function chainToUiOrder(chain: ChainOrder): UiOrder {
   };
 }
 
+// UI-to-contract create order mapping
 export function createOrderInputToContractArgs(input: CreateOrderInput): {
   fiat_currency_code: number;
   payment_method_code: number;
@@ -81,7 +97,7 @@ export function createOrderInputToContractArgs(input: CreateOrderInput): {
     fiat_currency_code: input.fiatCurrencyCode,
     payment_method_code: input.paymentMethodCode,
     from_crypto: orderTypeToFromCrypto(input.type),
-    amount: BigInt(Math.round(input.amount)),
+    amount: tokenAmountToChain(input.amount),
     exchange_rate: BigInt(Math.round(input.rate)),
     duration_secs: input.durationSecs,
   };

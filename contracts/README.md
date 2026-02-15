@@ -337,6 +337,60 @@ Additional terminal/branch states:
 - `Disputed`
 - `Refunded`
 
+### Frontend taker flow and market-maker CLI continuation
+
+The frontend quick trade flow is taker-first and then waits for the opposite side to continue the order lifecycle.
+
+#### User buys USDC
+
+- Frontend taker flow:
+  1. User takes a maker sell order (`take_order`).
+  2. User sends fiat and marks payment sent (`submit_fiat_payment`).
+  3. User waits for maker confirmation.
+- Market maker continuation (creator confirms fiat received):
+
+```bash
+make p2p-confirm-fiat-payment \
+  NETWORK=testnet \
+  SOURCE=creator \
+  ORDER_ID=<order_id> \
+  CALLER=creator
+```
+
+#### User sells USDC
+
+- Frontend taker flow:
+  1. User takes a maker buy order (`take_order`).
+  2. User waits for buyer-side fiat payment to be submitted.
+  3. User verifies fiat receipt and confirms (`confirm_fiat_payment`) from the waiting screen.
+- Market maker continuation (buyer-side submits fiat payment):
+
+```bash
+make p2p-submit-fiat-payment \
+  NETWORK=testnet \
+  SOURCE=filler \
+  ORDER_ID=<order_id> \
+  CALLER=filler
+```
+
+#### Status checkpoints before each continuation
+
+Use this command before acting as market maker:
+
+```bash
+make p2p-get-order NETWORK=testnet SOURCE=admin ORDER_ID=<order_id>
+```
+
+Expected status transitions:
+
+- `AwaitingPayment` -> call `submit_fiat_payment`
+- `AwaitingConfirmation` -> call `confirm_fiat_payment`
+- `Completed` -> flow is finished
+
+#### Seed order durations
+
+`p2p-seed-orders-small` and `p2p-seed-orders` now create 7-day orders (`DURATION_SECS=604800`) so orders remain fillable for frontend testing.
+
 ### Entrypoints
 
 - `initialize`

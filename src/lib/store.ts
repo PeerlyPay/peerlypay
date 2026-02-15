@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { User, Order, CreateOrderInput, P2POrderStatus, FiatCurrencyCode, PaymentMethodCode } from '@/types';
 import { durationLabel, fiatCurrencyLabel, paymentMethodLabel } from '@/lib/order-mapper';
+import { loadOrdersFromContract } from '@/lib/p2p';
 
+// Store contract and actions
 interface AppState {
   user: User;
   orders: Order[];
@@ -13,8 +15,10 @@ interface AppState {
   subtractBalance: (amount: number) => boolean;
   createOrder: (input: CreateOrderInput) => void;
   updateOrderStatus: (orderId: string, status: P2POrderStatus) => void;
+  refreshOrdersFromChain: () => Promise<void>;
 }
 
+// Initial in-memory state
 export const useStore = create<AppState>((set) => ({
   user: {
     walletAddress: null,
@@ -97,7 +101,8 @@ export const useStore = create<AppState>((set) => ({
       reputation_score: 89,
     },
   ],
-  
+
+  // Wallet session actions
   connectWallet: (walletAddress, walletOwner = null, walletStatus = 'logged-in') => {
     set((state) => ({
       user: {
@@ -136,6 +141,7 @@ export const useStore = create<AppState>((set) => ({
     }));
   },
 
+  // Balance actions
   setBalance: (usdc) => {
     const normalized = Math.max(0, Math.round(usdc * 100) / 100);
 
@@ -191,6 +197,7 @@ export const useStore = create<AppState>((set) => ({
     return success;
   },
 
+  // Order actions
   createOrder: (input: CreateOrderInput) => {
     set((state) => ({
       orders: [
@@ -217,5 +224,19 @@ export const useStore = create<AppState>((set) => ({
         order.id === orderId ? { ...order, status } : order
       ),
     }));
+  },
+
+  // On-chain sync actions
+  refreshOrdersFromChain: async () => {
+    try {
+      const chainOrders = await loadOrdersFromContract();
+      if (chainOrders.length === 0) {
+        return;
+      }
+
+      set({ orders: chainOrders });
+    } catch (error) {
+      console.error('Failed to refresh orders from contract', error);
+    }
   },
 }));

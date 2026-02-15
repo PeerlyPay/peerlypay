@@ -141,6 +141,8 @@ make p2p-quickstart NETWORK=testnet
 
 `p2p-wallet-setup` creates aliases, funds XLM, and sets trustlines. Then fund those wallets with USDC (or your selected token) before trading.
 
+For frontend taker flow details (buy vs sell) and how to continue as market maker from CLI, see `contracts/README.md` under `P2P Contract -> Frontend taker flow and market-maker CLI continuation`.
+
 
 
 ## Future Roadmap

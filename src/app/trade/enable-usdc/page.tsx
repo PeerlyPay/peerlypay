@@ -111,6 +111,9 @@ function EnableUsdcContent() {
   const searchParams = useSearchParams();
 
   const amount = searchParams.get('amount') || '0';
+  const requestedAmount = searchParams.get('requestedAmount') || amount;
+  const mode = searchParams.get('mode') || 'buy';
+  const orderId = searchParams.get('orderId') || '';
   const [isEnabling, setIsEnabling] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
 
@@ -121,8 +124,8 @@ function EnableUsdcContent() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Navigate to payment
-    router.push(`/trade/payment?amount=${amount}`);
-  }, [router, amount]);
+    router.push(`/trade/payment?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+  }, [amount, mode, orderId, requestedAmount, router]);
 
   const handleCancel = useCallback(() => {
     setShowCancel(false);

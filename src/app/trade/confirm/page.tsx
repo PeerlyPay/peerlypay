@@ -3,13 +3,17 @@
 import { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { useWallet } from '@crossmint/client-sdk-react-ui';
 import { ArrowLeft, ArrowUpCircle, ArrowDownCircle, Clock, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import ConfirmTradeIcon from '@/components/icons/ConfirmTradeIcon';
+import { takeOrderWithCrossmint } from '@/lib/p2p-crossmint';
+import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 async function checkUSDCTrustline(): Promise<boolean> {
   await new Promise((resolve) => setTimeout(resolve, 300));
-  return false;
+  return true;
 }
 
 const MOCK_RATE = 1_485;
@@ -32,10 +36,15 @@ function formatFiatCompact(value: number): string {
 function ConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { wallet } = useWallet();
+  const walletAddress = useStore((state) => state.user.walletAddress);
+  const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
   const [isChecking, setIsChecking] = useState(false);
 
   const amount = parseFloat(searchParams.get('amount') || '100');
+  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
   const mode = (searchParams.get('mode') || 'sell') as 'sell' | 'buy';
+  const orderId = searchParams.get('orderId') || '';
   const isSell = mode === 'sell';
 
   const rate = MOCK_RATE;
@@ -48,21 +57,51 @@ function ConfirmContent() {
 
   const sendLabel = isSell ? `${formatUsdc(amount)} USDC` : `~${formatFiatCompact(fiatAmount)} ARS`;
   const receiveLabel = isSell ? `~${formatFiatCompact(receiveArs)} ARS` : `${formatUsdc(receiveUsdc)} USDC`;
+  const isAdjustedAmount = Math.abs(requestedAmount - amount) > 0.0001;
 
   const handleConfirm = useCallback(async () => {
-    setIsChecking(true);
-    const hasTrustline = await checkUSDCTrustline();
-    setIsChecking(false);
-
-    if (hasTrustline) {
-      router.push(`/trade/payment?amount=${amount}&mode=${mode}`);
-    } else {
-      router.push(`/trade/enable-usdc?amount=${amount}&mode=${mode}`);
+    if (!walletAddress) {
+      toast.error('Connect wallet first');
+      return;
     }
-  }, [router, amount, mode]);
+
+    if (!orderId) {
+      toast.error('No order selected');
+      return;
+    }
+
+    setIsChecking(true);
+
+    try {
+      const hasTrustline = await checkUSDCTrustline();
+      if (!hasTrustline) {
+        router.push(`/trade/enable-usdc?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+        return;
+      }
+
+      await takeOrderWithCrossmint({
+        wallet,
+        caller: walletAddress,
+        orderId,
+      });
+
+      await refreshOrdersFromChain();
+
+      if (mode === 'buy') {
+        router.push(`/trade/payment?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+      } else {
+        router.push(`/trade/waiting?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+      }
+    } catch (error) {
+      console.error('Failed to take order', error);
+      toast.error('Failed to take order');
+    } finally {
+      setIsChecking(false);
+    }
+  }, [amount, mode, orderId, refreshOrdersFromChain, requestedAmount, router, wallet, walletAddress]);
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-64px)] bg-white">
+    <div className="flex min-h-0 flex-1 flex-col bg-white">
       {/* Header */}
       <div className="px-4 pt-4 pb-3 flex items-center gap-3">
         <button
@@ -85,6 +124,11 @@ function ConfirmContent() {
 
         {/* Trade Summary */}
         <div className="w-full rounded-md border border-neutral-400 bg-white p-4 flex flex-col gap-3">
+          {isAdjustedAmount && (
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              Full-order fill: you requested {formatUsdc(requestedAmount)} USDC, matched order executes {formatUsdc(amount)} USDC.
+            </p>
+          )}
           {/* You send */}
           <div className="flex items-center justify-between">
             <span className="font-[family-name:var(--font-dm-sans)] text-[15px] text-gray-900">You send</span>

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Guidance for coding agents working in `peerlypay-stellar`.
+Guidance for coding agents working in the project
 This repo has two primary parts:
 - Next.js 16 + TypeScript frontend at repository root.
 - Soroban Rust smart contract workspace in `contracts/`.
@@ -54,6 +54,15 @@ Follow existing patterns in this repository. Prefer minimal, consistent changes.
 - Prefer explicit, readable code over clever shortcuts.
 - Preserve current architecture (App Router + Zustand + Soroban module layout).
 
+### Simplicity and clarity (important)
+- Prefer the smallest working solution over layered abstractions.
+- Avoid adding wrappers/factories unless they remove real repetition or risk.
+- Keep on-chain read/write paths straightforward: one module per concern, predictable exports.
+- Co-locate tiny helpers near their usage; extract only when reused across modules.
+- Keep data flow easy to trace (input -> contract call -> mapping -> UI).
+- Use concise section comments for long utility files; avoid narrative comments.
+- If code is difficult to explain in 2-3 bullets, simplify before extending.
+
 ### TypeScript / Next.js
 - Language level: strict TypeScript style with explicit domain types.
 - Prefer `type`/`interface` in `types/index.ts` and shared modules.
@@ -101,6 +110,13 @@ Follow existing patterns in this repository. Prefer minimal, consistent changes.
 - Do not swallow errors silently; at minimum log actionable context.
 - Keep user-facing messages concise and non-technical.
 
+### On-chain frontend integration
+- Prefer generated Soroban bindings as the source of truth for contract methods/types.
+- Keep contract id configurable via env, but allow safe fallback to generated network defaults when appropriate.
+- Normalize contract `Result`/optional values in one place and reuse that path.
+- For contract reads, log count + per-item failures with order id to make debugging quick.
+- Keep mapping boundaries explicit: `Chain*` types for contract data, `Ui*` types for display.
+
 ### Rust / Soroban contract style
 - Keep business logic in manager modules (`core/*`) and checks in validators.
 - Add/extend `ContractError` variants instead of using generic failures.
@@ -128,7 +144,7 @@ Follow existing patterns in this repository. Prefer minimal, consistent changes.
 
 ## 3) Repository-Specific Observations
 
-- Frontend currently uses mocked wallet/order flows in Zustand.
+- Frontend is in transition from mocked order flows to contract-backed reads.
 - Contract module has real validation and fee/dispute logic with tests.
 - Large UI files (for example order detail) should be refactored only when requested.
 
