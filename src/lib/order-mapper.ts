@@ -1,6 +1,7 @@
 import type { ChainOrder, CreateOrderInput, OrderType, UiOrder } from '@/types';
 import { FiatCurrencyCode, PaymentMethodCode } from '@/types';
 
+// Display label dictionaries
 const FIAT_LABELS: Record<number, string> = {
   [FiatCurrencyCode.Usd]: 'USD',
   [FiatCurrencyCode.Eur]: 'EUR',
@@ -24,6 +25,7 @@ const DURATION_LABELS: Record<number, string> = {
   604800: '7 days',
 };
 
+// Code-to-label helpers
 export function fiatCurrencyLabel(code: number): string {
   return FIAT_LABELS[code] ?? `FIAT-${code}`;
 }
@@ -36,6 +38,7 @@ export function durationLabel(durationSecs: number): string {
   return DURATION_LABELS[durationSecs] ?? `${durationSecs}s`;
 }
 
+// Label/code normalization
 export function durationSecsFromLabel(label: string): number {
   const entry = Object.entries(DURATION_LABELS).find(([, value]) => value === label);
   return entry ? Number(entry[0]) : 1800;
@@ -49,6 +52,7 @@ export function fromCryptoToOrderType(fromCrypto: boolean): OrderType {
   return fromCrypto ? 'sell' : 'buy';
 }
 
+// Contract-to-UI mapping
 export function chainToUiOrder(chain: ChainOrder): UiOrder {
   return {
     id: chain.order_id.toString(),
@@ -69,6 +73,7 @@ export function chainToUiOrder(chain: ChainOrder): UiOrder {
   };
 }
 
+// UI-to-contract create order mapping
 export function createOrderInputToContractArgs(input: CreateOrderInput): {
   fiat_currency_code: number;
   payment_method_code: number;

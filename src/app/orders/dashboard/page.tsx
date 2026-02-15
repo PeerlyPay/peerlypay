@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import type { ChainOrder } from "@/types";
 import { fiatCurrencyLabel, paymentMethodLabel } from "@/lib/order-mapper";
-import { loadChainOrdersFromContract } from "@/lib/p2p-orders";
+import { loadChainOrdersFromContract } from "@/lib/p2p";
 
 function formatTimestamp(timestamp?: number): string {
   if (!timestamp) {

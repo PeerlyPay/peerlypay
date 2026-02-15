@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { User, Order, CreateOrderInput, P2POrderStatus, FiatCurrencyCode, PaymentMethodCode } from '@/types';
 import { durationLabel, fiatCurrencyLabel, paymentMethodLabel } from '@/lib/order-mapper';
-import { loadOrdersFromContract } from '@/lib/p2p-orders';
+import { loadOrdersFromContract } from '@/lib/p2p';
 
+// Store contract and actions
 interface AppState {
   user: User;
   orders: Order[];
@@ -17,6 +18,7 @@ interface AppState {
   refreshOrdersFromChain: () => Promise<void>;
 }
 
+// Initial in-memory state
 export const useStore = create<AppState>((set) => ({
   user: {
     walletAddress: null,
@@ -99,7 +101,8 @@ export const useStore = create<AppState>((set) => ({
       reputation_score: 89,
     },
   ],
-  
+
+  // Wallet session actions
   connectWallet: (walletAddress, walletOwner = null, walletStatus = 'logged-in') => {
     set((state) => ({
       user: {
@@ -138,6 +141,7 @@ export const useStore = create<AppState>((set) => ({
     }));
   },
 
+  // Balance actions
   setBalance: (usdc) => {
     const normalized = Math.max(0, Math.round(usdc * 100) / 100);
 
@@ -193,6 +197,7 @@ export const useStore = create<AppState>((set) => ({
     return success;
   },
 
+  // Order actions
   createOrder: (input: CreateOrderInput) => {
     set((state) => ({
       orders: [
@@ -221,6 +226,7 @@ export const useStore = create<AppState>((set) => ({
     }));
   },
 
+  // On-chain sync actions
   refreshOrdersFromChain: async () => {
     try {
       const chainOrders = await loadOrdersFromContract();
