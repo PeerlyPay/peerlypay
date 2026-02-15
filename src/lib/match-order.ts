@@ -2,6 +2,18 @@ import type { Order, OrderType, MatchOrderResult, MatchedMaker } from '@/types';
 
 /** Platform fee percentage (0.5%) */
 const FEE_RATE = 0.005;
+const ORDER_EXPIRY_BUFFER_MS = 120_000;
+
+function isOrderAvailableForMatch(order: Order): boolean {
+  const createdAtMs = order.createdAt instanceof Date ? order.createdAt.getTime() : Number.NaN;
+
+  if (!Number.isFinite(createdAtMs) || order.durationSecs <= 0) {
+    return false;
+  }
+
+  const expiresAtMs = createdAtMs + order.durationSecs * 1000;
+  return expiresAtMs - Date.now() > ORDER_EXPIRY_BUFFER_MS;
+}
 
 /**
  * Score an order for matching quality.
@@ -56,6 +68,7 @@ export function findBestMatch(
   const candidates = orders.filter((order) => {
     if (order.type !== oppositeType) return false;
     if (order.status !== 'AwaitingFiller') return false;
+    if (!isOrderAvailableForMatch(order)) return false;
     if (order.amount < amount) return false;
     if (order.createdBy === userId) return false;
     return true;
@@ -111,7 +124,7 @@ export function estimateQuickTrade(
   const oppositeType: OrderType = userType === 'buy' ? 'sell' : 'buy';
 
   const available = orders.filter(
-    (o) => o.type === oppositeType && o.status === 'AwaitingFiller' && o.amount >= amount
+    (o) => o.type === oppositeType && o.status === 'AwaitingFiller' && o.amount >= amount && isOrderAvailableForMatch(o)
   );
 
   if (available.length === 0) return null;

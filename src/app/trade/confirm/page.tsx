@@ -3,13 +3,17 @@
 import { useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { useWallet } from '@crossmint/client-sdk-react-ui';
 import { ArrowLeft, ArrowUpCircle, ArrowDownCircle, Clock, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import ConfirmTradeIcon from '@/components/icons/ConfirmTradeIcon';
+import { takeOrderWithCrossmint } from '@/lib/p2p-crossmint';
+import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 async function checkUSDCTrustline(): Promise<boolean> {
   await new Promise((resolve) => setTimeout(resolve, 300));
-  return false;
+  return true;
 }
 
 const MOCK_RATE = 1_485;
@@ -32,10 +36,14 @@ function formatFiatCompact(value: number): string {
 function ConfirmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { wallet } = useWallet();
+  const walletAddress = useStore((state) => state.user.walletAddress);
+  const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
   const [isChecking, setIsChecking] = useState(false);
 
   const amount = parseFloat(searchParams.get('amount') || '100');
   const mode = (searchParams.get('mode') || 'sell') as 'sell' | 'buy';
+  const orderId = searchParams.get('orderId') || '';
   const isSell = mode === 'sell';
 
   const rate = MOCK_RATE;
@@ -50,19 +58,48 @@ function ConfirmContent() {
   const receiveLabel = isSell ? `~${formatFiatCompact(receiveArs)} ARS` : `${formatUsdc(receiveUsdc)} USDC`;
 
   const handleConfirm = useCallback(async () => {
-    setIsChecking(true);
-    const hasTrustline = await checkUSDCTrustline();
-    setIsChecking(false);
-
-    if (hasTrustline) {
-      router.push(`/trade/payment?amount=${amount}&mode=${mode}`);
-    } else {
-      router.push(`/trade/enable-usdc?amount=${amount}&mode=${mode}`);
+    if (!walletAddress) {
+      toast.error('Connect wallet first');
+      return;
     }
-  }, [router, amount, mode]);
+
+    if (!orderId) {
+      toast.error('No order selected');
+      return;
+    }
+
+    setIsChecking(true);
+
+    try {
+      const hasTrustline = await checkUSDCTrustline();
+      if (!hasTrustline) {
+        router.push(`/trade/enable-usdc?amount=${amount}&mode=${mode}&orderId=${orderId}`);
+        return;
+      }
+
+      await takeOrderWithCrossmint({
+        wallet,
+        caller: walletAddress,
+        orderId,
+      });
+
+      await refreshOrdersFromChain();
+
+      if (mode === 'buy') {
+        router.push(`/trade/payment?amount=${amount}&mode=${mode}&orderId=${orderId}`);
+      } else {
+        router.push(`/trade/waiting?amount=${amount}&mode=${mode}&orderId=${orderId}`);
+      }
+    } catch (error) {
+      console.error('Failed to take order', error);
+      toast.error('Failed to take order');
+    } finally {
+      setIsChecking(false);
+    }
+  }, [amount, mode, orderId, refreshOrdersFromChain, router, wallet, walletAddress]);
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-64px)] bg-white">
+    <div className="flex min-h-0 flex-1 flex-col bg-white">
       {/* Header */}
       <div className="px-4 pt-4 pb-3 flex items-center gap-3">
         <button

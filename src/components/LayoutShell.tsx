@@ -1,15 +1,23 @@
-'use client';
+"use client";
 
-import { usePathname } from 'next/navigation';
-import Header from '@/components/Header';
-import BottomNav from '@/components/BottomNav';
+import { usePathname } from "next/navigation";
+import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
 
 /** Routes that render fullscreen without Header/BottomNav */
 function isFullscreenRoute(pathname: string): boolean {
-  return pathname.startsWith('/trade/');
+  if (!pathname.startsWith("/trade/")) {
+    return false;
+  }
+
+  return pathname !== "/trade/confirm" && pathname !== "/trade/payment" && pathname !== "/trade/waiting" && pathname !== "/trade/success";
 }
 
-export default function LayoutShell({ children }: { children: React.ReactNode }) {
+export default function LayoutShell({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const isFullscreen = isFullscreenRoute(pathname);
 
@@ -18,9 +26,9 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-white max-w-120 mx-auto px-4 pt-20 pb-24">
+    <div className="mx-auto flex min-h-screen max-w-120 flex-col bg-white px-4 pb-24 pt-20 shadow-md shadow-black/25">
       <Header />
-      {children}
+      <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       <BottomNav />
     </div>
   );

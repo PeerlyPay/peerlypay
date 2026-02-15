@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
-import { estimateQuickTrade } from '@/lib/match-order';
+import { estimateQuickTrade, findBestMatch } from '@/lib/match-order';
 import type { QuickTradeEstimate } from '@/types';
 
 /** Transaction limit in USDC */
@@ -203,8 +203,19 @@ export default function QuickTradeInput({ initialMode, onClose, showToggle = tru
   // Navigate to confirmation
   const handleContinue = useCallback(() => {
     if (!hasValidAmount || !estimate) return;
-    router.push(`/trade/confirm?amount=${usdcAmount.toFixed(2)}&mode=${mode}`);
-  }, [hasValidAmount, usdcAmount, mode, estimate, router]);
+
+    const userId = user.walletAddress ?? '';
+    const match = findBestMatch(orders, usdcAmount, mode, userId);
+
+    if (!match) {
+      setError('No matching order available right now');
+      return;
+    }
+
+    router.push(
+      `/trade/confirm?amount=${usdcAmount.toFixed(2)}&mode=${mode}&orderId=${match.matchedOrder.id}`
+    );
+  }, [estimate, hasValidAmount, mode, orders, router, usdcAmount, user.walletAddress]);
 
   // ─── Display values ─────────────────────────────
   const displayAmount = inputValue || '0';

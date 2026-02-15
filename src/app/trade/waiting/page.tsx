@@ -1,19 +1,22 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useWallet } from '@crossmint/client-sdk-react-ui';
 import {
-  Check,
+  ArrowLeft,
   Loader2,
-  MessageCircle,
   Shield,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import TradeChatDrawer from '@/components/trade/TradeChatDrawer';
+import { confirmFiatPaymentWithCrossmint } from '@/lib/p2p-crossmint';
+import { loadChainOrderByIdFromContract } from '@/lib/p2p';
+import type { P2POrderStatus } from '@/types';
+import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
-const MOCK_MAKER = 'crypto_trader_ar';
-
-/** Demo: auto-confirm after this many seconds */
-const MOCK_CONFIRM_DELAY_S = 10;
+const POLL_INTERVAL_MS = 5000;
 
 // ============================================
 // WAITING CONTENT
@@ -21,79 +24,97 @@ const MOCK_CONFIRM_DELAY_S = 10;
 function WaitingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { wallet } = useWallet();
+  const walletAddress = useStore((state) => state.user.walletAddress);
+  const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
 
   const amount = parseFloat(searchParams.get('amount') || '0.11');
+  const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
+  const orderId = searchParams.get('orderId') || '';
+  const isTakerSeller = mode === 'sell';
 
-  const [elapsed, setElapsed] = useState(0);
   const [isChecking, setIsChecking] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<P2POrderStatus | null>(null);
+  const [makerLabel, setMakerLabel] = useState('counterparty');
+  const makerHandle = makerLabel.startsWith('@') ? makerLabel : `@${makerLabel}`;
 
-  // Elapsed timer
+  const pollOrder = useCallback(async () => {
+    if (!orderId) {
+      return;
+    }
+
+    setIsChecking(true);
+
+    try {
+      const order = await loadChainOrderByIdFromContract(orderId);
+      setOrderStatus(order.status);
+      setMakerLabel(`${order.creator.slice(0, 6)}...${order.creator.slice(-4)}`);
+
+      if (order.status === 'Completed') {
+        router.push(`/trade/success?amount=${amount}&mode=${mode}&orderId=${orderId}`);
+      }
+    } catch (error) {
+      console.error('Failed to poll order status', error);
+    } finally {
+      setIsChecking(false);
+    }
+  }, [amount, mode, orderId, router]);
+
   useEffect(() => {
+    void pollOrder();
     const interval = setInterval(() => {
-      setElapsed((prev) => prev + 1);
-    }, 1000);
+      void pollOrder();
+    }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [pollOrder]);
 
-  // Mock "poll" every 5 seconds
-  useEffect(() => {
-    if (elapsed > 0 && elapsed % 5 === 0) {
-      setIsChecking(true);
-      const timeout = setTimeout(() => setIsChecking(false), 800);
-      return () => clearTimeout(timeout);
+  const handleConfirmReceipt = useCallback(async () => {
+    if (!walletAddress) {
+      toast.error('Connect wallet first');
+      return;
     }
-  }, [elapsed]);
 
-  // Mock auto-confirm
-  useEffect(() => {
-    if (elapsed >= MOCK_CONFIRM_DELAY_S) {
-      router.push(`/trade/success?amount=${amount}`);
+    if (!orderId) {
+      toast.error('No order selected');
+      return;
     }
-  }, [elapsed, amount, router]);
+
+    setIsConfirming(true);
+
+    try {
+      await confirmFiatPaymentWithCrossmint({
+        wallet,
+        caller: walletAddress,
+        orderId,
+      });
+      await refreshOrdersFromChain();
+      await pollOrder();
+    } catch (error) {
+      console.error('Failed to confirm fiat payment', error);
+      toast.error('Failed to confirm fiat payment');
+    } finally {
+      setIsConfirming(false);
+    }
+  }, [orderId, pollOrder, refreshOrdersFromChain, wallet, walletAddress]);
 
   return (
-    <div className="flex flex-col min-h-dvh bg-white">
+    <div className="flex min-h-0 flex-1 flex-col bg-white">
       {/* Header */}
       <div className="px-4 pt-4 pb-3 flex items-center gap-3">
-        <div className="flex items-center justify-center size-10 rounded-full bg-gray-100 opacity-40 cursor-not-allowed">
-          <span className="text-gray-400 text-sm">&larr;</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="flex items-center justify-center size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+        >
+          <ArrowLeft className="size-5 text-gray-900" />
+        </button>
         <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-gray-900">
-          Esperando Confirmación
+          Waiting for Confirmation
         </h2>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 pb-4">
-        {/* Progress Steps */}
-        <div className="flex items-center gap-3 w-full max-w-xs mb-10">
-          {/* Step 1: Escrow */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center justify-center size-6 rounded-full bg-emerald-500">
-              <Check className="size-3.5 text-white" strokeWidth={3} />
-            </div>
-            <span className="text-caption font-medium text-emerald-600">Escrow</span>
-          </div>
-          <div className="flex-1 h-px bg-emerald-300" />
-
-          {/* Step 2: Pago */}
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center justify-center size-6 rounded-full bg-emerald-500">
-              <Check className="size-3.5 text-white" strokeWidth={3} />
-            </div>
-            <span className="text-caption font-medium text-emerald-600">Pago</span>
-          </div>
-          <div className="flex-1 h-px bg-gray-200" />
-
-          {/* Step 3: Confirmación (current) */}
-          <div className="flex items-center gap-1.5">
-            <div className="relative flex items-center justify-center size-6 rounded-full bg-fuchsia-500">
-              <span className="text-white text-xs font-bold">3</span>
-              <span className="absolute inset-0 rounded-full bg-fuchsia-500 animate-ping opacity-30" />
-            </div>
-            <span className="text-caption font-semibold text-fuchsia-600">Confirmar</span>
-          </div>
-        </div>
-
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-4 pb-4">
         {/* Central Status */}
         <div className="flex flex-col items-center text-center">
           {/* Animated spinner ring */}
@@ -115,13 +136,13 @@ function WaitingContent() {
           </div>
 
           <h3 className="font-[family-name:var(--font-space-grotesk)] text-xl font-bold text-gray-900 mb-1.5">
-            Esperando confirmación
+            Waiting for confirmation
           </h3>
           <p className="text-body-sm text-gray-500 mb-1">
-            @{MOCK_MAKER} está verificando tu pago
+            Seller is verifying your payment
           </p>
           <p className="text-caption text-gray-400 mb-5">
-            Generalmente toma ~3 minutos
+            Once confirmed, your USDC will be released
           </p>
 
           {/* Polling indicator */}
@@ -136,7 +157,7 @@ function WaitingContent() {
               isChecking ? 'animate-spin' : ''
             )} />
             <span className="text-caption font-medium">
-              {isChecking ? 'Verificando...' : 'Escuchando actualizaciones'}
+              {isChecking ? 'Checking...' : 'Live updates'}
             </span>
           </div>
         </div>
@@ -144,18 +165,27 @@ function WaitingContent() {
 
       {/* Bottom Actions */}
       <div className="p-4 pb-6 border-t border-gray-100 space-y-3">
-        <button
-          type="button"
-          className="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-fuchsia-600 border border-fuchsia-200 bg-white hover:bg-fuchsia-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-        >
-          <MessageCircle className="size-4" />
-          Chat con @{MOCK_MAKER}
-        </button>
+        {isTakerSeller && orderStatus === 'AwaitingConfirmation' && (
+          <button
+            type="button"
+            onClick={handleConfirmReceipt}
+            disabled={isConfirming}
+            className="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-white bg-fuchsia-500 hover:bg-fuchsia-600 transition-all active:scale-[0.98] disabled:opacity-70"
+          >
+            {isConfirming ? 'Confirming...' : 'Confirm payment received'}
+          </button>
+        )}
+        <TradeChatDrawer
+          key={makerHandle}
+          triggerLabel="Message seller"
+          sellerLabel={makerHandle}
+          triggerClassName="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-fuchsia-600 border border-fuchsia-200 bg-white hover:bg-fuchsia-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+        />
         <button
           type="button"
           className="w-full h-10 font-[family-name:var(--font-space-grotesk)] text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors"
         >
-          Reportar problema
+          Report issue
         </button>
       </div>
     </div>
@@ -166,7 +196,7 @@ export default function TradeWaitingPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center py-20">Cargando...</div>
+        <div className="flex items-center justify-center py-20">Loading...</div>
       }
     >
       <WaitingContent />

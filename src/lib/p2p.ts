@@ -152,6 +152,12 @@ export async function loadChainOrdersFromContract(): Promise<ChainOrder[]> {
   return orders.sort((a, b) => Number(b.order_id - a.order_id));
 }
 
+export async function loadChainOrderByIdFromContract(orderId: string | number | bigint): Promise<ChainOrder> {
+  const normalized = typeof orderId === 'bigint' ? orderId : BigInt(String(orderId));
+  const tx = await client.get_order({ order_id: normalized });
+  return toChainOrder(unwrapResult(tx.result));
+}
+
 // UI-friendly projection API
 export async function loadOrdersFromContract(): Promise<UiOrder[]> {
   const orders = await loadChainOrdersFromContract();

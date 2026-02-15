@@ -3,14 +3,12 @@
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  X,
   Copy,
   Check,
   Star,
   Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useStore } from '@/lib/store';
 import { useTradeHistory } from '@/contexts/TradeHistoryContext';
 
 // Mock trade data
@@ -39,51 +37,6 @@ function formatFiatCompact(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
-}
-
-// ============================================
-// CONFETTI
-// ============================================
-const CONFETTI_COLORS = [
-  '#d946ef', '#a855f7', '#6366f1', '#8b5cf6',
-  '#10b981', '#f59e0b', '#ec4899', '#84cc16',
-];
-
-function Confetti() {
-  const pieces = useMemo(
-    () =>
-      Array.from({ length: 40 }, (_, i) => ({
-        id: i,
-        left: Math.random() * 100,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        size: 6 + Math.random() * 6,
-        duration: 2.5 + Math.random() * 2,
-        delay: Math.random() * 0.8,
-        shape: Math.random() > 0.5 ? 'circle' : 'rect',
-      })),
-    []
-  );
-
-  return (
-    <div className="fixed inset-0 z-[70] pointer-events-none overflow-hidden">
-      {pieces.map((p) => (
-        <div
-          key={p.id}
-          className="absolute animate-confetti"
-          style={{
-            left: `${p.left}%`,
-            top: '-10px',
-            '--confetti-duration': `${p.duration}s`,
-            '--confetti-delay': `${p.delay}s`,
-            width: p.shape === 'circle' ? p.size : p.size * 0.6,
-            height: p.size,
-            backgroundColor: p.color,
-            borderRadius: p.shape === 'circle' ? '50%' : '2px',
-          } as React.CSSProperties}
-        />
-      ))}
-    </div>
-  );
 }
 
 // ============================================
@@ -129,22 +82,20 @@ function StarRating({
 function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const subtractBalance = useStore((state) => state.subtractBalance);
   const { addTrade } = useTradeHistory();
 
   const amount = parseFloat(searchParams.get('amount') || '0.11');
+  const orderId = searchParams.get('orderId') || '';
   const fiatAmount = amount * MOCK_RATE;
   const feeArs = amount * FEE_RATE * MOCK_RATE;
   const totalPaid = fiatAmount - feeArs;
 
-  const [showConfetti, setShowConfetti] = useState(true);
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   const timestamp = useMemo(() => {
-    return new Date().toLocaleString('es-AR', {
+    return new Date().toLocaleString('en-US', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -154,12 +105,12 @@ function SuccessContent() {
     });
   }, []);
 
-  // Deduct balance and save trade on mount
+  // Save trade summary once on mount
   useEffect(() => {
-    const processed = sessionStorage.getItem(`trade_processed_${amount}`);
+    const processedKey = `trade_processed_${orderId || amount}`;
+    const processed = sessionStorage.getItem(processedKey);
     if (processed) return;
 
-    subtractBalance(amount);
     addTrade({
       amount,
       arsReceived: totalPaid,
@@ -169,20 +120,8 @@ function SuccessContent() {
       txnId: MOCK_TXN_ID,
     });
 
-    sessionStorage.setItem(`trade_processed_${amount}`, 'true');
+    sessionStorage.setItem(processedKey, 'true');
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Trigger mount animation
-  useEffect(() => {
-    const timeout = setTimeout(() => setMounted(true), 50);
-    return () => clearTimeout(timeout);
-  }, []);
-
-  // Hide confetti after animation completes
-  useEffect(() => {
-    const timeout = setTimeout(() => setShowConfetti(false), 4500);
-    return () => clearTimeout(timeout);
   }, []);
 
   const handleCopy = async () => {
@@ -203,30 +142,11 @@ function SuccessContent() {
   };
 
   return (
-    <div className="flex flex-col min-h-dvh bg-white">
-      {showConfetti && <Confetti />}
-
-      {/* Close button */}
-      <div className="flex items-center justify-end px-4 pt-4 pb-0">
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          className="flex items-center justify-center size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-        >
-          <X className="size-5 text-gray-500" />
-        </button>
-      </div>
-
+    <div className="flex min-h-0 flex-1 flex-col bg-white">
       <div className="flex-1 px-4 pb-4 overflow-y-auto">
         {/* Success Hero */}
-        <div className="flex flex-col items-center text-center pt-4 pb-6">
-          {/* Animated checkmark */}
-          <div
-            className={cn(
-              'flex items-center justify-center size-24 rounded-full bg-emerald-50 mb-5',
-              mounted ? 'animate-scaleIn' : 'opacity-0'
-            )}
-          >
+        <div className="flex flex-col items-center text-center pt-8 pb-6">
+          <div className="mb-5 flex size-24 items-center justify-center rounded-full bg-emerald-50">
             <div className="flex items-center justify-center size-16 rounded-full bg-emerald-500">
               <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
                 <path
@@ -243,50 +163,38 @@ function SuccessContent() {
             </div>
           </div>
 
-          <h2
-            className={cn(
-              'font-[family-name:var(--font-space-grotesk)] text-2xl font-bold text-gray-900 mb-2 transition-all duration-500',
-              mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            )}
-            style={{ transitionDelay: '0.3s' }}
-          >
-            Trade Completado!
+          <h2 className="mb-2 font-[family-name:var(--font-space-grotesk)] text-2xl font-bold text-gray-900">
+            Trade Completed!
           </h2>
-          <p
-            className={cn(
-              'text-body text-gray-500 transition-all duration-500',
-              mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-            )}
-            style={{ transitionDelay: '0.45s' }}
-          >
-            Tu USDC ha sido liberado
+          <p className="text-body-sm text-gray-500">
+            Your USDC has been released
           </p>
         </div>
 
         <div className="space-y-4">
           {/* Transaction Summary */}
-          <div className="bg-gray-50 rounded-2xl p-5 space-y-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
             {/* Amount received — prominent */}
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Recibiste</span>
+              <span className="text-body-sm text-gray-500">You received</span>
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-xl font-bold text-emerald-600 tabular-nums">
                 {formatUsdc(amount)} USDC
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Pagaste</span>
+              <span className="text-body-sm text-gray-500">You paid</span>
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-sm font-semibold text-gray-900 tabular-nums">
                 ${formatFiat(totalPaid)} ARS
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Tasa</span>
+              <span className="text-body-sm text-gray-500">Rate</span>
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-gray-900 tabular-nums">
                 1 USDC = {formatFiatCompact(MOCK_RATE)} ARS
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Tiempo</span>
+              <span className="text-body-sm text-gray-500">Time</span>
               <span className="text-body-sm font-semibold text-gray-900">
                 {MOCK_DURATION}
               </span>
@@ -322,7 +230,7 @@ function SuccessContent() {
           </div>
 
           {/* Wallet info */}
-          <div className="flex items-center gap-2.5 px-4 py-3.5 bg-emerald-50 rounded-2xl">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
             <Wallet className="size-5 text-emerald-600 shrink-0" />
             <span className="text-body-sm font-medium text-emerald-700">
               Your USDC is now available in your wallet
@@ -330,23 +238,23 @@ function SuccessContent() {
           </div>
 
           {/* Market Maker Rating */}
-          <div className="bg-gray-50 rounded-2xl p-5">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5">
             {ratingSubmitted ? (
               <div className="flex flex-col items-center text-center py-2">
                 <div className="flex items-center justify-center size-10 rounded-full bg-emerald-100 mb-2">
                   <Check className="size-5 text-emerald-600" strokeWidth={2.5} />
                 </div>
                 <p className="text-body-sm font-semibold text-gray-900">
-                  Gracias por tu calificación!
+                  Thanks for your rating!
                 </p>
                 <p className="text-caption text-gray-400 mt-0.5">
-                  Tu feedback ayuda a la comunidad
+                  Your feedback helps the community
                 </p>
               </div>
             ) : (
               <>
                 <p className="text-body-sm text-gray-500 text-center mb-3">
-                  Como fue tu experiencia con <strong className="text-gray-900">@{MOCK_MAKER}</strong>?
+                  How was your experience with <strong className="text-gray-900">@{MOCK_MAKER}</strong>?
                 </p>
                 <div className="flex justify-center mb-4">
                   <StarRating value={rating} onChange={setRating} />
@@ -357,7 +265,7 @@ function SuccessContent() {
                     onClick={handleSubmitRating}
                     className="w-full h-10 rounded-xl font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 transition-colors active:scale-[0.98]"
                   >
-                    Enviar calificación
+                    Submit rating
                   </button>
                 )}
               </>
@@ -371,23 +279,23 @@ function SuccessContent() {
         <button
           type="button"
           onClick={() => router.push('/trade')}
-          className="w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white bg-gradient-to-r from-fuchsia-500 to-purple-600 shadow-lg shadow-fuchsia-500/25 hover:opacity-90 transition-all active:scale-[0.98]"
+          className="w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white bg-fuchsia-500 shadow-lg shadow-fuchsia-500/25 hover:bg-fuchsia-600 transition-all active:scale-[0.98]"
         >
-          Hacer otro trade
+          Make another trade
         </button>
         <button
           type="button"
           onClick={() => router.push('/orders')}
           className="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-gray-500 border border-gray-200 bg-white hover:bg-gray-50 transition-all active:scale-[0.98]"
         >
-          Ver mis órdenes
+          View my orders
         </button>
         <button
           type="button"
           onClick={() => router.push('/')}
           className="w-full h-10 font-[family-name:var(--font-space-grotesk)] text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors"
         >
-          Volver al inicio
+          Back to home
         </button>
       </div>
     </div>
@@ -398,7 +306,7 @@ export default function TradeSuccessPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center py-20">Cargando...</div>
+        <div className="flex items-center justify-center py-20">Loading...</div>
       }
     >
       <SuccessContent />

@@ -2,7 +2,12 @@
 
 import { useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Copy, Check, MessageCircle } from 'lucide-react';
+import { useWallet } from '@crossmint/client-sdk-react-ui';
+import { Copy, Check } from 'lucide-react';
+import { toast } from 'sonner';
+import TradeChatDrawer from '@/components/trade/TradeChatDrawer';
+import { submitFiatPaymentWithCrossmint } from '@/lib/p2p-crossmint';
+import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 // Mock payment details
@@ -26,13 +31,19 @@ function formatFiat(value: number): string {
 function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { wallet } = useWallet();
+  const walletAddress = useStore((state) => state.user.walletAddress);
+  const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
 
   const amount = parseFloat(searchParams.get('amount') || '100');
+  const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
+  const orderId = searchParams.get('orderId') || '';
   const fiatAmount = amount * MOCK_RATE;
   const feeArs = amount * FEE_RATE * MOCK_RATE;
   const totalToPay = fiatAmount - feeArs;
 
   const [copied, setCopied] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -44,24 +55,40 @@ function PaymentContent() {
     }
   }, []);
 
-  return (
-    <div className="flex flex-col min-h-dvh bg-white">
-      {/* Header */}
-      <div className="px-4 pt-4 pb-3 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="flex items-center justify-center size-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-        >
-          <ArrowLeft className="size-5 text-gray-900" />
-        </button>
-        <h2 className="font-[family-name:var(--font-space-grotesk)] text-lg font-bold text-gray-900">
-          Make Payment
-        </h2>
-      </div>
+  const handlePaymentSent = useCallback(async () => {
+    if (!walletAddress) {
+      toast.error('Connect wallet first');
+      return;
+    }
 
+    if (!orderId) {
+      toast.error('No order selected');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await submitFiatPaymentWithCrossmint({
+        wallet,
+        caller: walletAddress,
+        orderId,
+      });
+
+      await refreshOrdersFromChain();
+      router.push(`/trade/waiting?amount=${amount}&mode=${mode}&orderId=${orderId}`);
+    } catch (error) {
+      console.error('Failed to submit fiat payment', error);
+      toast.error('Failed to submit fiat payment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [amount, mode, orderId, refreshOrdersFromChain, router, wallet, walletAddress]);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-white">
       {/* Centered content */}
-      <div className="flex-1 flex flex-col items-center px-6 pt-8">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center px-6 pt-8">
         {/* Icon */}
         <img
           src="/icons/payment-sent.svg"
@@ -113,18 +140,17 @@ function PaymentContent() {
       <div className="p-4 pb-6 space-y-4">
         <button
           type="button"
-          onClick={() => router.push(`/trade/waiting?amount=${amount}`)}
+          onClick={handlePaymentSent}
+          disabled={isSubmitting}
           className="w-full h-14 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-bold text-white bg-gradient-to-r from-primary-500 to-primary-600 shadow-lg shadow-primary-500/25 hover:opacity-90 transition-all active:scale-[0.98]"
         >
-          Payment sent
+          {isSubmitting ? 'Submitting...' : 'Payment sent'}
         </button>
-        <button
-          type="button"
-          className="w-full flex items-center justify-center gap-2 text-body-sm font-medium text-fuchsia-600 hover:text-fuchsia-700 transition-colors"
-        >
-          <MessageCircle className="size-4" />
-          Message seller
-        </button>
+        <TradeChatDrawer
+          triggerLabel="Message seller"
+          sellerLabel={MOCK_PAYMENT.maker}
+          triggerClassName="w-full flex items-center justify-center gap-2 text-body-sm font-medium text-fuchsia-600 hover:text-fuchsia-700 transition-colors"
+        />
       </div>
     </div>
   );
