@@ -1,4 +1,4 @@
-import type { Order, OrderType, MatchOrderResult, MatchedMaker } from '@/types';
+import type { Order, OrderType, MatchOrderResult, MatchedMaker } from "@/types";
 
 /** Platform fee percentage (0.5%) */
 const FEE_RATE = 0.005;
@@ -7,7 +7,8 @@ const PRICE_WEIGHT = 0.2;
 const SIZE_WEIGHT = 0.8;
 
 function isOrderAvailableForMatch(order: Order): boolean {
-  const createdAtMs = order.createdAt instanceof Date ? order.createdAt.getTime() : Number.NaN;
+  const createdAtMs =
+    order.createdAt instanceof Date ? order.createdAt.getTime() : Number.NaN;
 
   if (!Number.isFinite(createdAtMs) || order.durationSecs <= 0) {
     return false;
@@ -62,14 +63,14 @@ export function findBestMatch(
   orders: Order[],
   amount: number,
   userType: OrderType,
-  userId: string
+  userId: string,
 ): MatchOrderResult | null {
   // Opposite type: if user wants to BUY, find SELL orders
-  const oppositeType: OrderType = userType === 'buy' ? 'sell' : 'buy';
+  const oppositeType: OrderType = userType === "buy" ? "sell" : "buy";
 
   const candidates = orders.filter((order) => {
     if (order.type !== oppositeType) return false;
-    if (order.status !== 'AwaitingFiller') return false;
+    if (order.status !== "AwaitingFiller") return false;
     if (!isOrderAvailableForMatch(order)) return false;
     if (order.amount > amount) return false;
     if (order.createdBy === userId) return false;
@@ -84,11 +85,12 @@ export function findBestMatch(
   const rateSpan = maxRate - minRate;
 
   const rank = (order: Order) => {
-    const priceScore = rateSpan === 0
-      ? 1
-      : userType === 'buy'
-        ? (maxRate - order.rate) / rateSpan
-        : (order.rate - minRate) / rateSpan;
+    const priceScore =
+      rateSpan === 0
+        ? 1
+        : userType === "buy"
+          ? (maxRate - order.rate) / rateSpan
+          : (order.rate - minRate) / rateSpan;
 
     // Full-order fills only: closer order size to requested amount is better.
     // Candidates are already filtered to order.amount <= amount, so order.amount / amount
@@ -127,7 +129,7 @@ export function findBestMatch(
     estimatedAmount: fiatAmount,
     rate: best.rate,
     fee,
-    total: userType === 'buy' ? fiatAmount + fee : fiatAmount - fee,
+    total: userType === "buy" ? fiatAmount + fee : fiatAmount - fee,
   };
 }
 
@@ -138,12 +140,16 @@ export function findBestMatch(
 export function estimateQuickTrade(
   orders: Order[],
   amount: number,
-  userType: OrderType
+  userType: OrderType,
 ) {
-  const oppositeType: OrderType = userType === 'buy' ? 'sell' : 'buy';
+  const oppositeType: OrderType = userType === "buy" ? "sell" : "buy";
 
   const available = orders.filter(
-    (o) => o.type === oppositeType && o.status === 'AwaitingFiller' && o.amount <= amount && isOrderAvailableForMatch(o)
+    (o) =>
+      o.type === oppositeType &&
+      o.status === "AwaitingFiller" &&
+      o.amount <= amount &&
+      isOrderAvailableForMatch(o),
   );
 
   if (available.length === 0) return null;
@@ -154,11 +160,12 @@ export function estimateQuickTrade(
   const rateSpan = maxRate - minRate;
 
   const rank = (order: Order) => {
-    const priceScore = rateSpan === 0
-      ? 1
-      : userType === 'buy'
-        ? (maxRate - order.rate) / rateSpan
-        : (order.rate - minRate) / rateSpan;
+    const priceScore =
+      rateSpan === 0
+        ? 1
+        : userType === "buy"
+          ? (maxRate - order.rate) / rateSpan
+          : (order.rate - minRate) / rateSpan;
 
     const sizeScore = Math.max(0, Math.min(1, order.amount / amount));
 
@@ -176,7 +183,7 @@ export function estimateQuickTrade(
     rate: bestRate,
     fiatAmount,
     fee,
-    total: userType === 'buy' ? fiatAmount + fee : fiatAmount - fee,
+    total: userType === "buy" ? fiatAmount + fee : fiatAmount - fee,
     fiatCurrencyCode: available[0].fiatCurrencyCode,
   };
 }
