@@ -7,6 +7,9 @@ interface AppState {
   connectWallet: (walletAddress: string, walletOwner?: string | null, walletStatus?: string | null) => void;
   setWalletStatus: (walletStatus: string | null) => void;
   disconnectWallet: () => void;
+  setBalance: (usdc: number) => void;
+  addBalance: (amount: number) => void;
+  subtractBalance: (amount: number) => boolean;
   createOrder: (input: CreateOrderInput) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
 }
@@ -108,8 +111,67 @@ export const useStore = create<AppState>((set) => ({
         walletOwner: null,
         walletStatus: 'logged-out',
         isConnected: false,
+        balance: {
+          usd: 0,
+          usdc: 0,
+        },
       },
     }));
+  },
+
+  setBalance: (usdc) => {
+    const normalized = Math.max(0, Math.round(usdc * 100) / 100);
+
+    set((state) => ({
+      user: {
+        ...state.user,
+        balance: {
+          usd: normalized,
+          usdc: normalized,
+        },
+      },
+    }));
+  },
+
+  addBalance: (amount) => {
+    set((state) => {
+      const next = Math.max(0, Math.round((state.user.balance.usdc + amount) * 100) / 100);
+
+      return {
+        user: {
+          ...state.user,
+          balance: {
+            usd: next,
+            usdc: next,
+          },
+        },
+      };
+    });
+  },
+
+  subtractBalance: (amount) => {
+    let success = false;
+
+    set((state) => {
+      if (state.user.balance.usdc < amount) {
+        return state;
+      }
+
+      success = true;
+      const next = Math.max(0, Math.round((state.user.balance.usdc - amount) * 100) / 100);
+
+      return {
+        user: {
+          ...state.user,
+          balance: {
+            usd: next,
+            usdc: next,
+          },
+        },
+      };
+    });
+
+    return success;
   },
 
   createOrder: (input: CreateOrderInput) => {

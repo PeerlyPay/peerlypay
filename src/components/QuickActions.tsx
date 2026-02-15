@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@crossmint/client-sdk-react-ui";
 import {
   ArrowUpFromLine,
   ArrowDownToLine,
@@ -10,8 +9,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
-import { useBalance } from "@/contexts/BalanceContext";
-import WalletModal from "@/components/WalletModal";
 import DepositModal from "@/components/DepositModal";
 import TradeDrawer from "@/components/TradeDrawer";
 import SendModal from "@/components/SendModal";
@@ -24,22 +21,12 @@ const actions = [
 ] as const;
 
 export default function QuickActions() {
-  const { user, disconnectWallet } = useStore();
-  const { logout } = useAuth();
-  const { usdc, subtractBalance } = useBalance();
+  const { user, subtractBalance } = useStore();
   const [depositOpen, setDepositOpen] = useState(false);
   const [tradeOpen, setTradeOpen] = useState(false);
   const [tradeMode, setTradeMode] = useState<"buy" | "sell">("buy");
   const [sendOpen, setSendOpen] = useState(false);
   const walletAddress = user.walletAddress ?? "";
-
-  const handleDisconnect = async () => {
-    try {
-      await logout();
-    } catch {}
-
-    disconnectWallet();
-  };
 
   const handleAction = (id: string) => {
     switch (id) {
@@ -82,7 +69,7 @@ export default function QuickActions() {
       <SendModal
         isOpen={sendOpen}
         onClose={() => setSendOpen(false)}
-        availableUsdc={usdc}
+        availableUsdc={user.balance.usdc}
         onSend={(amount) => subtractBalance(amount)}
       />
 

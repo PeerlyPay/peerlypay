@@ -10,7 +10,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useBalance } from '@/contexts/BalanceContext';
+import { useStore } from '@/lib/store';
 import { useTradeHistory } from '@/contexts/TradeHistoryContext';
 
 // Mock trade data
@@ -129,7 +129,7 @@ function StarRating({
 function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { subtractBalance } = useBalance();
+  const subtractBalance = useStore((state) => state.subtractBalance);
   const { addTrade } = useTradeHistory();
 
   const amount = parseFloat(searchParams.get('amount') || '0.11');
