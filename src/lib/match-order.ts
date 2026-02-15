@@ -3,8 +3,8 @@ import type { Order, OrderType, MatchOrderResult, MatchedMaker } from '@/types';
 /** Platform fee percentage (0.5%) */
 const FEE_RATE = 0.005;
 const ORDER_EXPIRY_BUFFER_MS = 120_000;
-const PRICE_WEIGHT = 0.7;
-const SIZE_WEIGHT = 0.3;
+const PRICE_WEIGHT = 0.5;
+const SIZE_WEIGHT = 0.5;
 
 function isOrderAvailableForMatch(order: Order): boolean {
   const createdAtMs = order.createdAt instanceof Date ? order.createdAt.getTime() : Number.NaN;
