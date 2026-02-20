@@ -35,14 +35,15 @@ function PaymentContent() {
   const walletAddress = useStore((state) => state.user.walletAddress);
   const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
 
-  const amount = parseFloat(searchParams.get('amount') || '100');
-  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
+  const flowId = searchParams.get('flowId') || '';
+  const fillUsdc = parseFloat(searchParams.get('fillUsdc') || searchParams.get('amount') || '100');
+  const intentUsdc = parseFloat(searchParams.get('intentUsdc') || searchParams.get('requestedAmount') || String(fillUsdc));
   const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
   const orderId = searchParams.get('orderId') || '';
-  const fiatAmount = amount * MOCK_RATE;
-  const feeArs = amount * FEE_RATE * MOCK_RATE;
+  const fiatAmount = fillUsdc * MOCK_RATE;
+  const feeArs = fillUsdc * FEE_RATE * MOCK_RATE;
   const totalToPay = fiatAmount - feeArs;
-  const isAdjustedAmount = Math.abs(requestedAmount - amount) > 0.0001;
+  const isAdjustedAmount = Math.abs(intentUsdc - fillUsdc) > 0.0001;
 
   const [copied, setCopied] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,14 +79,14 @@ function PaymentContent() {
       });
 
       await refreshOrdersFromChain();
-      router.push(`/trade/waiting?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+      router.push(`/trade/waiting?flowId=${encodeURIComponent(flowId)}&fillUsdc=${fillUsdc}&intentUsdc=${intentUsdc}&mode=${mode}&orderId=${orderId}`);
     } catch (error) {
       console.error('Failed to submit fiat payment', error);
       toast.error('Failed to submit fiat payment');
     } finally {
       setIsSubmitting(false);
     }
-  }, [amount, mode, orderId, refreshOrdersFromChain, requestedAmount, router, wallet, walletAddress]);
+  }, [fillUsdc, flowId, intentUsdc, mode, orderId, refreshOrdersFromChain, router, wallet, walletAddress]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white">
@@ -110,7 +111,7 @@ function PaymentContent() {
 
         {isAdjustedAmount && (
           <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs text-amber-700">
-            Full-order fill applied: requested {requestedAmount.toFixed(2)} USDC, matched {amount.toFixed(2)} USDC.
+            Requested {intentUsdc.toFixed(2)} USDC, this swap executes {fillUsdc.toFixed(2)} USDC.
           </p>
         )}
 

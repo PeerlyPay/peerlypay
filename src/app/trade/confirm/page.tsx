@@ -41,23 +41,24 @@ function ConfirmContent() {
   const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
   const [isChecking, setIsChecking] = useState(false);
 
-  const amount = parseFloat(searchParams.get('amount') || '100');
-  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
+  const flowId = searchParams.get('flowId') || '';
+  const fillUsdc = parseFloat(searchParams.get('fillUsdc') || searchParams.get('amount') || '100');
+  const intentUsdc = parseFloat(searchParams.get('intentUsdc') || searchParams.get('requestedAmount') || String(fillUsdc));
   const mode = (searchParams.get('mode') || 'sell') as 'sell' | 'buy';
   const orderId = searchParams.get('orderId') || '';
   const isSell = mode === 'sell';
 
   const rate = MOCK_RATE;
-  const fiatAmount = amount * rate;
-  const feeArs = amount * FEE_RATE * rate;
-  const feeUsdc = amount * FEE_RATE;
+  const fiatAmount = fillUsdc * rate;
+  const feeArs = fillUsdc * FEE_RATE * rate;
+  const feeUsdc = fillUsdc * FEE_RATE;
   // Fee already deducted from receive amount
   const receiveArs = isSell ? fiatAmount - feeArs : fiatAmount;
-  const receiveUsdc = isSell ? amount : amount - feeUsdc;
+  const receiveUsdc = isSell ? fillUsdc : fillUsdc - feeUsdc;
 
-  const sendLabel = isSell ? `${formatUsdc(amount)} USDC` : `~${formatFiatCompact(fiatAmount)} ARS`;
+  const sendLabel = isSell ? `${formatUsdc(fillUsdc)} USDC` : `~${formatFiatCompact(fiatAmount)} ARS`;
   const receiveLabel = isSell ? `~${formatFiatCompact(receiveArs)} ARS` : `${formatUsdc(receiveUsdc)} USDC`;
-  const isAdjustedAmount = Math.abs(requestedAmount - amount) > 0.0001;
+  const isAdjustedAmount = Math.abs(intentUsdc - fillUsdc) > 0.0001;
 
   const handleConfirm = useCallback(async () => {
     if (!walletAddress) {
@@ -75,7 +76,7 @@ function ConfirmContent() {
     try {
       const hasTrustline = await checkUSDCTrustline();
       if (!hasTrustline) {
-        router.push(`/trade/enable-usdc?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+        router.push(`/trade/enable-usdc?flowId=${encodeURIComponent(flowId)}&fillUsdc=${fillUsdc}&intentUsdc=${intentUsdc}&mode=${mode}&orderId=${orderId}`);
         return;
       }
 
@@ -83,14 +84,15 @@ function ConfirmContent() {
         wallet,
         caller: walletAddress,
         orderId,
+        fillAmount: fillUsdc,
       });
 
       await refreshOrdersFromChain();
 
       if (mode === 'buy') {
-        router.push(`/trade/payment?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+        router.push(`/trade/payment?flowId=${encodeURIComponent(flowId)}&fillUsdc=${fillUsdc}&intentUsdc=${intentUsdc}&mode=${mode}&orderId=${orderId}`);
       } else {
-        router.push(`/trade/waiting?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
+        router.push(`/trade/waiting?flowId=${encodeURIComponent(flowId)}&fillUsdc=${fillUsdc}&intentUsdc=${intentUsdc}&mode=${mode}&orderId=${orderId}`);
       }
     } catch (error) {
       console.error('Failed to take order', error);
@@ -98,7 +100,7 @@ function ConfirmContent() {
     } finally {
       setIsChecking(false);
     }
-  }, [amount, mode, orderId, refreshOrdersFromChain, requestedAmount, router, wallet, walletAddress]);
+  }, [fillUsdc, flowId, intentUsdc, mode, orderId, refreshOrdersFromChain, router, wallet, walletAddress]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white">
@@ -126,7 +128,7 @@ function ConfirmContent() {
         <div className="w-full rounded-md border border-neutral-400 bg-white p-4 flex flex-col gap-3">
           {isAdjustedAmount && (
             <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              Full-order fill: you requested {formatUsdc(requestedAmount)} USDC, matched order executes {formatUsdc(amount)} USDC.
+              Requested {formatUsdc(intentUsdc)} USDC, this swap executes {formatUsdc(fillUsdc)} USDC.
             </p>
           )}
           {/* You send */}

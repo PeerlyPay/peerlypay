@@ -54,7 +54,7 @@ export function scoreOrder(order: Order, userType: OrderType): number {
  *
  * Algorithm:
  * 1. Filter orders of opposite type (if user buys, find sellers)
- * 2. Filter only open orders whose full size does not exceed requested amount
+ * 2. Filter open orders with enough remaining liquidity for requested amount
  * 3. Exclude orders from the requesting user
  * 4. Sort by best rate, then by reputation score
  * 5. Return the top match with fee calculation
@@ -69,10 +69,13 @@ export function findBestMatch(
   const oppositeType: OrderType = userType === "buy" ? "sell" : "buy";
 
   const candidates = orders.filter((order) => {
+    const availableAmount = order.remainingAmount ?? order.amount;
+
     if (order.type !== oppositeType) return false;
     if (order.status !== "AwaitingFiller") return false;
     if (!isOrderAvailableForMatch(order)) return false;
-    if (order.amount > amount) return false;
+    if (availableAmount < amount) return false;
+    if ((order.activeFillAmount ?? 0) > 0) return false;
     if (order.createdBy === userId) return false;
     return true;
   });
@@ -92,10 +95,8 @@ export function findBestMatch(
           ? (maxRate - order.rate) / rateSpan
           : (order.rate - minRate) / rateSpan;
 
-    // Full-order fills only: closer order size to requested amount is better.
-    // Candidates are already filtered to order.amount <= amount, so order.amount / amount
-    // gives a 0..1 closeness score where 1 is an exact fill.
-    const sizeScore = Math.max(0, Math.min(1, order.amount / amount));
+    const availableAmount = order.remainingAmount ?? order.amount;
+    const sizeScore = Math.max(0, Math.min(1, availableAmount / amount));
 
     return PRICE_WEIGHT * priceScore + SIZE_WEIGHT * sizeScore;
   };
@@ -125,6 +126,7 @@ export function findBestMatch(
 
   return {
     matchedOrder: best,
+    fillAmount: amount,
     maker,
     estimatedAmount: fiatAmount,
     rate: best.rate,
@@ -145,11 +147,17 @@ export function estimateQuickTrade(
   const oppositeType: OrderType = userType === "buy" ? "sell" : "buy";
 
   const available = orders.filter(
-    (o) =>
-      o.type === oppositeType &&
-      o.status === "AwaitingFiller" &&
-      o.amount <= amount &&
-      isOrderAvailableForMatch(o),
+    (o) => {
+      const availableAmount = o.remainingAmount ?? o.amount;
+
+      return (
+        o.type === oppositeType &&
+        o.status === "AwaitingFiller" &&
+        availableAmount >= amount &&
+        (o.activeFillAmount ?? 0) === 0 &&
+        isOrderAvailableForMatch(o)
+      );
+    },
   );
 
   if (available.length === 0) return null;
@@ -167,7 +175,8 @@ export function estimateQuickTrade(
           ? (maxRate - order.rate) / rateSpan
           : (order.rate - minRate) / rateSpan;
 
-    const sizeScore = Math.max(0, Math.min(1, order.amount / amount));
+    const availableAmount = order.remainingAmount ?? order.amount;
+    const sizeScore = Math.max(0, Math.min(1, availableAmount / amount));
 
     return PRICE_WEIGHT * priceScore + SIZE_WEIGHT * sizeScore;
   };

@@ -148,6 +148,22 @@ impl P2PContract {
         Ok(())
     }
 
+    pub fn take_order_with_amount(
+        e: Env,
+        caller: Address,
+        order_id: u64,
+        fill_amount: i128,
+    ) -> Result<(), ContractError> {
+        let _order =
+            OrderManager::take_order_with_amount(&e, caller.clone(), order_id, fill_amount)?;
+        OrderTaken {
+            order_id,
+            filler: caller,
+        }
+        .publish(&e);
+        Ok(())
+    }
+
     pub fn submit_fiat_payment(
         e: Env,
         caller: Address,
@@ -167,18 +183,19 @@ impl P2PContract {
         caller: Address,
         order_id: u64,
     ) -> Result<(), ContractError> {
-        let order = OrderManager::execute_fiat_transfer_timeout(&e, caller.clone(), order_id)?;
-        let (refunded_to, refund_amount) = if order.from_crypto {
+        let (order, refund_amount) =
+            OrderManager::execute_fiat_transfer_timeout(&e, caller.clone(), order_id)?;
+        let (refunded_to, normalized_refund_amount) = if order.from_crypto {
             (None, 0)
         } else {
-            (Some(caller.clone()), order.amount)
+            (Some(caller.clone()), refund_amount)
         };
 
         FiatTransferTimeout {
             order_id,
             executed_by: caller,
             refunded_to,
-            refund_amount,
+            refund_amount: normalized_refund_amount,
         }
         .publish(&e);
         Ok(())
