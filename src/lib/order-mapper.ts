@@ -65,11 +65,22 @@ export function fromCryptoToOrderType(fromCrypto: boolean): OrderType {
 
 // Contract-to-UI mapping
 export function chainToUiOrder(chain: ChainOrder): UiOrder {
+  const totalAmount = tokenAmountFromChain(chain.amount);
+  const remainingAmount = tokenAmountFromChain(chain.remaining_amount);
+  const filledAmount = tokenAmountFromChain(chain.filled_amount);
+  const activeFillAmount = chain.active_fill_amount
+    ? tokenAmountFromChain(chain.active_fill_amount)
+    : 0;
+
   return {
     id: chain.order_id.toString(),
     orderId: chain.order_id,
     type: fromCryptoToOrderType(chain.from_crypto),
-    amount: tokenAmountFromChain(chain.amount),
+    totalAmount,
+    remainingAmount,
+    filledAmount,
+    activeFillAmount,
+    amount: remainingAmount,
     rate: Number(chain.exchange_rate),
     fiatCurrencyCode: chain.fiat_currency_code,
     fiatCurrencyLabel: fiatCurrencyLabel(chain.fiat_currency_code),

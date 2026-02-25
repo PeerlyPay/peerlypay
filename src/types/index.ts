@@ -56,6 +56,9 @@ export interface ChainOrder {
   creator: string;
   filler?: string;
   amount: bigint;
+  remaining_amount: bigint;
+  filled_amount: bigint;
+  active_fill_amount?: bigint;
   exchange_rate: bigint;
   from_crypto: boolean;
   fiat_currency_code: FiatCurrencyCodeValue;
@@ -70,6 +73,10 @@ export interface UiOrder {
   id: string;
   orderId: bigint;
   type: OrderType;
+  totalAmount: number;
+  remainingAmount: number;
+  filledAmount: number;
+  activeFillAmount: number;
   amount: number;
   rate: number;
   fiatCurrencyCode: FiatCurrencyCodeValue;
@@ -140,6 +147,7 @@ export interface MatchedMaker {
 
 export interface MatchOrderResult {
   matchedOrder: UiOrder;
+  fillAmount: number;
   maker: MatchedMaker;
   estimatedAmount: number;
   rate: number;

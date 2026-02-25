@@ -19,7 +19,9 @@ function getAddressInitial(address: string): string {
 
 export default function OrderCard({ order }: OrderCardProps) {
   const router = useRouter();
-  const total = order.amount * order.rate;
+  const availableAmount = order.remainingAmount ?? order.amount;
+  const totalAmount = order.totalAmount ?? order.amount;
+  const total = availableAmount * order.rate;
   const actionLabel = order.type === 'sell' ? 'Buy Now' : 'Sell Now';
   const currencyLabel = order.fiatCurrencyLabel;
 
@@ -83,7 +85,7 @@ export default function OrderCard({ order }: OrderCardProps) {
 
       {/* Row 4: Limits */}
       <p className="mt-1 text-sm text-gray-600">
-        Limits: 10 - {total.toLocaleString('en-US')} {currencyLabel}
+        Available: {availableAmount.toLocaleString('en-US')} USDC (of {totalAmount.toLocaleString('en-US')} total)
       </p>
 
       {/* Row 5: Payment methods + compact button */}

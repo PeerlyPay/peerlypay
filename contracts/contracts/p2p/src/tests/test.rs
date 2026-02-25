@@ -90,6 +90,9 @@ fn test_create_order_from_crypto_holds_funds() {
     assert_eq!(order.status, OrderStatus::AwaitingFiller);
     assert_eq!(order.creator, s.creator);
     assert_eq!(order.amount, 100);
+    assert_eq!(order.remaining_amount, 100);
+    assert_eq!(order.filled_amount, 0);
+    assert_eq!(order.active_fill_amount, None);
 
     let contract_balance = s.token.balance(&s.client.address);
     assert_eq!(contract_balance, 100);
@@ -139,6 +142,7 @@ fn test_take_order_from_fiat_requires_filler_deposit() {
 
     assert_eq!(order.status, OrderStatus::AwaitingPayment);
     assert_eq!(order.filler, Some(s.filler.clone()));
+    assert_eq!(order.active_fill_amount, Some(700));
 
     let filler_balance_after = s.token.balance(&s.filler);
     assert_eq!(filler_balance_before - filler_balance_after, 700);
@@ -166,6 +170,8 @@ fn test_submit_confirm_from_crypto_releases_to_filler() {
 
     let order = s.client.get_order(&order_id);
     assert_eq!(order.status, OrderStatus::Completed);
+    assert_eq!(order.remaining_amount, 0);
+    assert_eq!(order.filled_amount, 400);
     assert_eq!(s.token.balance(&s.filler), filler_before + 400);
     assert_eq!(s.token.balance(&s.client.address), 0);
 }
@@ -191,6 +197,8 @@ fn test_submit_confirm_from_fiat_releases_to_creator() {
 
     let order = s.client.get_order(&order_id);
     assert_eq!(order.status, OrderStatus::Completed);
+    assert_eq!(order.remaining_amount, 0);
+    assert_eq!(order.filled_amount, 450);
     assert_eq!(s.token.balance(&s.creator), creator_before + 450);
     assert_eq!(s.token.balance(&s.client.address), 0);
 }
@@ -221,6 +229,7 @@ fn test_timeout_resets_order_to_awaiting_filler() {
     let order = s.client.get_order(&order_id);
     assert_eq!(order.status, OrderStatus::AwaitingFiller);
     assert_eq!(order.filler, None);
+    assert_eq!(order.active_fill_amount, None);
     assert_eq!(order.fiat_transfer_deadline, None);
     assert_eq!(s.token.balance(&s.filler), filler_balance_before);
     assert_eq!(s.token.balance(&s.client.address), 0);
@@ -249,6 +258,8 @@ fn test_dispute_and_resolve_confirmed_completes() {
 
     let order = s.client.get_order(&order_id);
     assert_eq!(order.status, OrderStatus::Completed);
+    assert_eq!(order.filled_amount, 250);
+    assert_eq!(order.remaining_amount, 0);
     assert_eq!(s.token.balance(&s.filler), filler_before + 250);
 }
 
@@ -274,8 +285,38 @@ fn test_dispute_and_resolve_not_confirmed_refunds_depositor() {
         .resolve_dispute(&s.dispute_resolver, &order_id, &false);
 
     let order = s.client.get_order(&order_id);
-    assert_eq!(order.status, OrderStatus::Refunded);
+    assert_eq!(order.status, OrderStatus::AwaitingFiller);
+    assert_eq!(order.remaining_amount, 350);
+    assert_eq!(order.filled_amount, 0);
     assert_eq!(s.token.balance(&s.creator), creator_before);
+}
+
+#[test]
+fn test_partial_fill_reduces_remaining_and_reopens_order() {
+    let s = setup();
+
+    let creator_before = s.token.balance(&s.creator);
+    let order_id = s.client.create_order(
+        &s.creator,
+        &FiatCurrency::Usd,
+        &PaymentMethod::BankTransfer,
+        &false,
+        &1_000,
+        &1000,
+        &600,
+    );
+
+    s.client.take_order_with_amount(&s.filler, &order_id, &200);
+    s.client.submit_fiat_payment(&s.creator, &order_id);
+    s.client.confirm_fiat_payment(&s.filler, &order_id);
+
+    let order = s.client.get_order(&order_id);
+    assert_eq!(order.status, OrderStatus::AwaitingFiller);
+    assert_eq!(order.remaining_amount, 800);
+    assert_eq!(order.filled_amount, 200);
+    assert_eq!(order.filler, None);
+    assert_eq!(order.active_fill_amount, None);
+    assert_eq!(s.token.balance(&s.creator), creator_before + 200);
 }
 
 #[test]

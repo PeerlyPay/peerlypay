@@ -23,6 +23,9 @@ pub enum ContractError {
     DivisionError = 17,
     InvalidTimeout = 18,
     InvalidAddress = 19,
+    InvalidFillAmount = 20,
+    FillAmountExceedsRemaining = 21,
+    MissingActiveFill = 22,
 }
 
 impl fmt::Display for ContractError {
@@ -51,6 +54,11 @@ impl fmt::Display for ContractError {
             ContractError::DivisionError => write!(f, "Division error"),
             ContractError::InvalidTimeout => write!(f, "Invalid timeout configuration"),
             ContractError::InvalidAddress => write!(f, "Invalid address"),
+            ContractError::InvalidFillAmount => write!(f, "Fill amount must be greater than zero"),
+            ContractError::FillAmountExceedsRemaining => {
+                write!(f, "Fill amount exceeds remaining amount")
+            }
+            ContractError::MissingActiveFill => write!(f, "Order active fill amount is missing"),
         }
     }
 }

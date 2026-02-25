@@ -4,12 +4,14 @@
 vitest.config.ts
 docs/
 
-components/ui
+src/components/ui/
+src/contracts/
 
 contracts/CONTRIBUTORS_GUIDELINE.md
 contracts/GIT_GUIDELINE.md
 contracts/.artifacts/
 contracts/.stellar/
+contracts/escrow/
 
 
 contracts/contracts/escrow/

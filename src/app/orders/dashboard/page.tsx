@@ -108,6 +108,9 @@ export default function OrdersDashboardPage() {
                 <th className="px-3 py-2 font-medium">Creator</th>
                 <th className="px-3 py-2 font-medium">Filler</th>
                 <th className="px-3 py-2 font-medium">Amount</th>
+                <th className="px-3 py-2 font-medium">Remaining</th>
+                <th className="px-3 py-2 font-medium">Filled</th>
+                <th className="px-3 py-2 font-medium">Active Fill</th>
                 <th className="px-3 py-2 font-medium">Rate</th>
                 <th className="px-3 py-2 font-medium">Fiat</th>
                 <th className="px-3 py-2 font-medium">Payment</th>
@@ -143,6 +146,15 @@ export default function OrdersDashboardPage() {
                   </td>
                   <td className="px-3 py-2 font-mono">
                     {order.amount.toString()}
+                  </td>
+                  <td className="px-3 py-2 font-mono">
+                    {order.remaining_amount.toString()}
+                  </td>
+                  <td className="px-3 py-2 font-mono">
+                    {order.filled_amount.toString()}
+                  </td>
+                  <td className="px-3 py-2 font-mono">
+                    {order.active_fill_amount?.toString() ?? '-'}
                   </td>
                   <td className="px-3 py-2 font-mono">
                     {order.exchange_rate.toString()}

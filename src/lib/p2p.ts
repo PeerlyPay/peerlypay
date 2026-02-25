@@ -114,6 +114,12 @@ function toChainOrder(order: ContractOrder): ChainOrder {
     creator: order.creator,
     filler: toOptionalAddress(order.filler),
     amount: toBigInt(order.amount),
+    remaining_amount: toBigInt(order.remaining_amount),
+    filled_amount: toBigInt(order.filled_amount),
+    active_fill_amount:
+      order.active_fill_amount === null || order.active_fill_amount === undefined
+        ? undefined
+        : toBigInt(order.active_fill_amount),
     exchange_rate: toBigInt(order.exchange_rate),
     from_crypto: order.from_crypto,
     fiat_currency_code: fiatCurrencyCode(order.fiat_currency),

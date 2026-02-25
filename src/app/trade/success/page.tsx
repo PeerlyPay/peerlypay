@@ -80,13 +80,15 @@ function SuccessContent() {
   const { addTrade } = useTradeHistory();
 
   const amount = parseFloat(searchParams.get("amount") || "0.11");
-  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
+  const fillUsdc = parseFloat(searchParams.get('fillUsdc') || String(amount));
+  const intentUsdc = parseFloat(searchParams.get('intentUsdc') || searchParams.get('requestedAmount') || String(fillUsdc));
+  const flowId = searchParams.get('flowId') || '';
   const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
   const orderId = searchParams.get("orderId") || "";
-  const fiatAmount = amount * MOCK_RATE;
-  const feeArs = amount * FEE_RATE * MOCK_RATE;
+  const fiatAmount = fillUsdc * MOCK_RATE;
+  const feeArs = fillUsdc * FEE_RATE * MOCK_RATE;
   const totalPaid = fiatAmount - feeArs;
-  const isAdjustedAmount = Math.abs(requestedAmount - amount) > 0.0001;
+  const isAdjustedAmount = Math.abs(intentUsdc - fillUsdc) > 0.0001;
 
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -105,13 +107,13 @@ function SuccessContent() {
 
   // Save trade summary once on mount
   useEffect(() => {
-    const processedKey = `trade_processed_${orderId || amount}`;
+    const processedKey = `trade_processed_${flowId || orderId || fillUsdc}`;
     const processed = sessionStorage.getItem(processedKey);
     if (processed) return;
 
     addTrade({
       type: mode,
-      amount,
+      amount: fillUsdc,
       arsReceived: totalPaid,
       rate: MOCK_RATE,
       marketMaker: MOCK_MAKER,
@@ -121,7 +123,7 @@ function SuccessContent() {
 
     sessionStorage.setItem(processedKey, "true");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [addTrade, fillUsdc, flowId, mode, orderId, totalPaid]);
 
   const handleCopy = async () => {
     try {
@@ -170,7 +172,7 @@ function SuccessContent() {
           </p>
           {isAdjustedAmount && (
             <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              Full-order fill applied: requested {formatUsdc(requestedAmount)} USDC, executed {formatUsdc(amount)} USDC.
+              Requested {formatUsdc(intentUsdc)} USDC, executed {formatUsdc(fillUsdc)} USDC.
             </p>
           )}
         </div>
@@ -182,7 +184,7 @@ function SuccessContent() {
             <div className="flex items-center justify-between">
               <span className="text-body-sm text-gray-500">You received</span>
               <span className="font-[family-name:var(--font-jetbrains-mono)] text-xl font-bold text-emerald-600 tabular-nums">
-                {formatUsdc(amount)} USDC
+                {formatUsdc(fillUsdc)} USDC
               </span>
             </div>
             <div className="flex items-center justify-between">
