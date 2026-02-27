@@ -152,8 +152,12 @@ function WaitingContent() {
   const verifyPaymentLabel = isConfirming
     ? 'Confirming...'
     : canConfirmPaymentReceipt
-      ? 'Confirm payment received'
-      : 'Waiting for buyer payment';
+      ? mode === 'sell'
+        ? 'Confirm vendor paid'
+        : 'Confirm payment received'
+      : mode === 'sell'
+        ? 'Waiting for vendor payout'
+        : 'Waiting for buyer payment';
 
   const counterpartyLabel = useMemo(() => {
     if (!order) {
@@ -175,10 +179,14 @@ function WaitingContent() {
     if (orderStatus === 'AwaitingPayment') {
       if (userIsCryptoSeller) {
         return {
-          header: 'Waiting for Buyer Payment',
-          title: 'Waiting for buyer payment',
-          body: 'The buyer needs to send fiat and mark payment as sent.',
-          note: 'After that, you will verify receipt before releasing USDC.',
+          header: mode === 'sell' ? 'Waiting for Vendor Payout' : 'Waiting for Buyer Payment',
+          title: mode === 'sell' ? 'Waiting for vendor payout' : 'Waiting for buyer payment',
+          body: mode === 'sell'
+            ? 'Counterparty must send ARS to your vendor and mark payment as sent.'
+            : 'The buyer needs to send fiat and mark payment as sent.',
+          note: mode === 'sell'
+            ? 'Confirm once your vendor validates the incoming transfer.'
+            : 'After that, you will verify receipt before releasing USDC.',
         };
       }
 
@@ -193,9 +201,11 @@ function WaitingContent() {
     if (orderStatus === 'AwaitingConfirmation') {
       if (userIsCryptoSeller) {
         return {
-          header: 'Verify Payment',
-          title: 'Verify fiat payment received',
-          body: 'Check your bank or wallet and confirm once funds arrive.',
+          header: mode === 'sell' ? 'Verify Vendor Payment' : 'Verify Payment',
+          title: mode === 'sell' ? 'Verify vendor received fiat' : 'Verify fiat payment received',
+          body: mode === 'sell'
+            ? 'Check with your vendor and confirm once they receive the transfer.'
+            : 'Check your bank or wallet and confirm once funds arrive.',
           note: 'Confirming will release USDC from escrow.',
         };
       }
@@ -223,7 +233,7 @@ function WaitingContent() {
       body: 'Fetching current contract state for this order.',
       note: 'Please keep this screen open.',
     };
-  }, [orderStatus, userIsCryptoSeller]);
+  }, [mode, orderStatus, userIsCryptoSeller]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white">
@@ -306,6 +316,8 @@ function WaitingContent() {
           key={counterpartyLabel}
           triggerLabel="Message counterparty"
           sellerLabel={counterpartyLabel}
+          flowId={flowId}
+          enableVendorRequest={mode === 'sell'}
           triggerClassName="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-fuchsia-600 border border-fuchsia-200 bg-white hover:bg-fuchsia-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         />
         <button

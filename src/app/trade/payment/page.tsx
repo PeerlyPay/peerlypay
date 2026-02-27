@@ -158,6 +158,8 @@ function PaymentContent() {
         <TradeChatDrawer
           triggerLabel="Message seller"
           sellerLabel={MOCK_PAYMENT.maker}
+          flowId={flowId}
+          enableVendorRequest={mode === 'sell'}
           triggerClassName="w-full flex items-center justify-center gap-2 text-body-sm font-medium text-fuchsia-600 hover:text-fuchsia-700 transition-colors"
         />
       </div>

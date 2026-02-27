@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, Check, Star, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTradeHistory } from "@/contexts/TradeHistoryContext";
+import { clearVendorPaymentRequest, loadVendorPaymentRequest } from '@/lib/vendor-payment-request';
 
 // Mock trade data
 const MOCK_MAKER = "crypto_trader_ar";
@@ -93,6 +94,7 @@ function SuccessContent() {
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [vendorAlias, setVendorAlias] = useState<string | null>(null);
 
   const timestamp = useMemo(() => {
     return new Date().toLocaleString("en-US", {
@@ -106,6 +108,16 @@ function SuccessContent() {
   }, []);
 
   // Save trade summary once on mount
+  useEffect(() => {
+    if (!flowId) {
+      return;
+    }
+
+    const request = loadVendorPaymentRequest(flowId);
+    setVendorAlias(request?.alias ?? null);
+    clearVendorPaymentRequest(flowId);
+  }, [flowId]);
+
   useEffect(() => {
     const processedKey = `trade_processed_${flowId || orderId || fillUsdc}`;
     const processed = sessionStorage.getItem(processedKey);
@@ -170,6 +182,11 @@ function SuccessContent() {
           <p className="text-body-sm text-gray-500">
             Your USDC has been released
           </p>
+          {vendorAlias && (
+            <p className="mt-2 text-caption text-gray-500">
+              Vendor payout target: @{vendorAlias}
+            </p>
+          )}
           {isAdjustedAmount && (
             <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
               Requested {formatUsdc(intentUsdc)} USDC, executed {formatUsdc(fillUsdc)} USDC.

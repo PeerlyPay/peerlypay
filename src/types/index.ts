@@ -1,5 +1,15 @@
 export type OrderType = 'buy' | 'sell';
 
+export type VendorPaymentRail = 'bank_transfer' | 'mobile_wallet' | 'cash_pickup';
+
+export interface VendorPaymentRequest {
+  alias: string;
+  rail: VendorPaymentRail;
+  destination: string;
+  reference?: string;
+  note?: string;
+}
+
 export type P2POrderStatus =
   | 'Created'
   | 'AwaitingFiller'

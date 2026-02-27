@@ -12,6 +12,7 @@ import { useStore } from "@/lib/store";
 import DepositModal from "@/components/DepositModal";
 import TradeDrawer from "@/components/TradeDrawer";
 import SendModal from "@/components/SendModal";
+ 
 
 const actions = [
   { icon: ArrowUpFromLine, label: "Send", id: "send" },

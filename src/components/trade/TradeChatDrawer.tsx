@@ -10,6 +10,8 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer';
+import type { VendorPaymentRail, VendorPaymentRequest } from '@/types';
+import { loadVendorPaymentRequest, saveVendorPaymentRequest } from '@/lib/vendor-payment-request';
 import { cn } from '@/lib/utils';
 
 type ChatSender = 'me' | 'seller';
@@ -23,8 +25,16 @@ type TradeChatMessage = {
 type TradeChatDrawerProps = {
   triggerLabel: string;
   sellerLabel: string;
+  flowId?: string;
+  enableVendorRequest?: boolean;
   triggerClassName?: string;
   initialMessages?: TradeChatMessage[];
+};
+
+const RAIL_LABELS: Record<VendorPaymentRail, string> = {
+  bank_transfer: 'Bank Transfer',
+  mobile_wallet: 'Mobile Wallet',
+  cash_pickup: 'Cash Pickup',
 };
 
 function createSellerGreeting(sellerLabel: string): TradeChatMessage {
@@ -38,6 +48,8 @@ function createSellerGreeting(sellerLabel: string): TradeChatMessage {
 export default function TradeChatDrawer({
   triggerLabel,
   sellerLabel,
+  flowId,
+  enableVendorRequest = false,
   triggerClassName,
   initialMessages,
 }: TradeChatDrawerProps) {
@@ -50,7 +62,31 @@ export default function TradeChatDrawer({
 
     return [createSellerGreeting(sellerLabel)];
   });
+  const [vendorAlias, setVendorAlias] = useState('');
+  const [vendorRail, setVendorRail] = useState<VendorPaymentRail>('bank_transfer');
+  const [vendorDestination, setVendorDestination] = useState('');
+  const [vendorReference, setVendorReference] = useState('');
+  const [vendorNote, setVendorNote] = useState('');
+  const [vendorRequest, setVendorRequest] = useState<VendorPaymentRequest | null>(null);
   const messagesRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!enableVendorRequest || !flowId) {
+      return;
+    }
+
+    const saved = loadVendorPaymentRequest(flowId);
+    if (!saved) {
+      return;
+    }
+
+    setVendorRequest(saved);
+    setVendorAlias(saved.alias);
+    setVendorRail(saved.rail);
+    setVendorDestination(saved.destination);
+    setVendorReference(saved.reference ?? '');
+    setVendorNote(saved.note ?? '');
+  }, [enableVendorRequest, flowId]);
 
   useEffect(() => {
     if (!open || !messagesRef.current) {
@@ -76,6 +112,45 @@ export default function TradeChatDrawer({
     setDraft('');
   }, [draft]);
 
+  const handleSaveVendorRequest = useCallback(() => {
+    const alias = vendorAlias.trim();
+    const destination = vendorDestination.trim();
+    const reference = vendorReference.trim();
+    const note = vendorNote.trim();
+
+    if (!flowId || !alias || !destination) {
+      return;
+    }
+
+    const nextRequest: VendorPaymentRequest = {
+      alias,
+      rail: vendorRail,
+      destination,
+      reference: reference || undefined,
+      note: note || undefined,
+    };
+
+    saveVendorPaymentRequest(flowId, nextRequest);
+    setVendorRequest(nextRequest);
+
+    const summaryParts = [
+      `Send ARS to @${alias} via ${RAIL_LABELS[vendorRail]}.`,
+      `Destination: ${destination}.`,
+      reference ? `Reference: ${reference}.` : '',
+      note ? `Note: ${note}.` : '',
+    ].filter(Boolean);
+
+    const summaryMessage: TradeChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      sender: 'me',
+      text: summaryParts.join(' '),
+    };
+
+    setMessages((current) => [...current, summaryMessage]);
+  }, [flowId, vendorAlias, vendorDestination, vendorNote, vendorRail, vendorReference]);
+
+  const showVendorForm = enableVendorRequest && !vendorRequest;
+
   return (
     <Drawer open={open} onOpenChange={setOpen} direction="bottom">
       <DrawerTrigger asChild>
@@ -90,6 +165,77 @@ export default function TradeChatDrawer({
           <DrawerTitle>Chat with {sellerLabel}</DrawerTitle>
           <DrawerDescription>Coordinate payment details safely in this thread.</DrawerDescription>
         </DrawerHeader>
+
+        {enableVendorRequest && (
+          <div className="mx-5 mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-semibold text-amber-800">Vendor payout details</p>
+            {!showVendorForm && vendorRequest ? (
+              <>
+                <p className="mt-1 text-xs text-amber-700">
+                  @{vendorRequest.alias} - {RAIL_LABELS[vendorRequest.rail]}
+                </p>
+                <p className="text-xs text-amber-700">{vendorRequest.destination}</p>
+                {vendorRequest.reference && (
+                  <p className="text-xs text-amber-700">Ref: {vendorRequest.reference}</p>
+                )}
+                {vendorRequest.note && (
+                  <p className="text-xs text-amber-700">Note: {vendorRequest.note}</p>
+                )}
+                <p className="mt-2 text-[11px] text-amber-700">
+                  Locked for this trade after save.
+                </p>
+              </>
+            ) : (
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  value={vendorAlias}
+                  onChange={(event) => setVendorAlias(event.target.value)}
+                  placeholder="Vendor alias (example: rapipago-centro)"
+                  className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-xs text-gray-900 outline-none"
+                />
+                <select
+                  value={vendorRail}
+                  onChange={(event) => setVendorRail(event.target.value as VendorPaymentRail)}
+                  className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-xs text-gray-900 outline-none"
+                >
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="mobile_wallet">Mobile Wallet</option>
+                  <option value="cash_pickup">Cash Pickup</option>
+                </select>
+                <input
+                  type="text"
+                  value={vendorDestination}
+                  onChange={(event) => setVendorDestination(event.target.value)}
+                  placeholder="CBU/CVU/account/handle"
+                  className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-xs text-gray-900 outline-none"
+                />
+                <input
+                  type="text"
+                  value={vendorReference}
+                  onChange={(event) => setVendorReference(event.target.value)}
+                  placeholder="Reference (optional)"
+                  className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-xs text-gray-900 outline-none"
+                />
+                <input
+                  type="text"
+                  value={vendorNote}
+                  onChange={(event) => setVendorNote(event.target.value)}
+                  placeholder="Notes (optional)"
+                  className="h-9 w-full rounded-lg border border-amber-200 bg-white px-2 text-xs text-gray-900 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveVendorRequest}
+                  disabled={!flowId || !vendorAlias.trim() || !vendorDestination.trim()}
+                  className="h-9 w-full rounded-lg bg-amber-500 text-xs font-semibold text-white disabled:opacity-50"
+                >
+                  Save payout details
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div ref={messagesRef} className="flex-1 space-y-3 overflow-y-auto px-5 pb-4">
           {messages.map((message) => {
