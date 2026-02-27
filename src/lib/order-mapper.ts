@@ -19,12 +19,22 @@ const FIAT_LABELS: Record<number, string> = {
   [FiatCurrencyCode.Ars]: 'ARS',
   [FiatCurrencyCode.Cop]: 'COP',
   [FiatCurrencyCode.Gbp]: 'GBP',
+  [FiatCurrencyCode.Ves]: 'VES',
+  [FiatCurrencyCode.Brl]: 'BRL',
+  [FiatCurrencyCode.Mxn]: 'MXN',
+  [FiatCurrencyCode.Clp]: 'CLP',
+  [FiatCurrencyCode.Pen]: 'PEN',
 };
 
 const PAYMENT_LABELS: Record<number, string> = {
   [PaymentMethodCode.BankTransfer]: 'Bank Transfer',
   [PaymentMethodCode.MobileWallet]: 'Mobile Wallet',
   [PaymentMethodCode.Cash]: 'Cash',
+  [PaymentMethodCode.MercadoPago]: 'Mercado Pago',
+  [PaymentMethodCode.Nequi]: 'Nequi',
+  [PaymentMethodCode.PagoMovil]: 'Pago Móvil',
+  [PaymentMethodCode.Zelle]: 'Zelle',
+  [PaymentMethodCode.Wise]: 'Wise',
 };
 
 const DURATION_LABELS: Record<number, string> = {

@@ -228,6 +228,12 @@ export const useStore = create<AppState>((set) => ({
           activeFillAmount: 0,
           fiatCurrencyLabel: fiatCurrencyLabel(input.fiatCurrencyCode),
           paymentMethodLabel: paymentMethodLabel(input.paymentMethodCode),
+          paymentMethodLabels: input.paymentMethodCodes
+            ? input.paymentMethodCodes.map((c) => paymentMethodLabel(c))
+            : [paymentMethodLabel(input.paymentMethodCode)],
+          paymentMethodCodes: input.paymentMethodCodes ?? [input.paymentMethodCode],
+          minTradeAmount: input.minTradeAmount,
+          maxTradeAmount: input.maxTradeAmount,
           durationLabel: durationLabel(input.durationSecs),
           status: 'AwaitingFiller',
           createdAt: new Date(),

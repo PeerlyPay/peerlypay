@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   ArrowUpFromLine,
   ArrowDownToLine,
   TrendingUp,
   TrendingDown,
+  Store,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
@@ -85,6 +87,14 @@ export default function QuickActions() {
         onOpenChange={setTradeOpen}
         mode={tradeMode}
       />
+
+      <Link
+        href="/orders/post-offer"
+        className="mt-2 flex items-center justify-center gap-2 rounded-[14px] border border-dashed border-primary-400 bg-primary-50 py-3 text-sm font-semibold text-primary-600 hover:bg-primary-100 transition-colors"
+      >
+        <Store className="size-4" />
+        Post a Sell Offer
+      </Link>
     </>
   );
 }

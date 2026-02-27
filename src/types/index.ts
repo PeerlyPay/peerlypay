@@ -37,12 +37,22 @@ export enum FiatCurrencyCode {
   Ars = 2,
   Cop = 3,
   Gbp = 4,
+  Ves = 5,
+  Brl = 6,
+  Mxn = 7,
+  Clp = 8,
+  Pen = 9,
 }
 
 export enum PaymentMethodCode {
   BankTransfer = 0,
   MobileWallet = 1,
   Cash = 2,
+  MercadoPago = 3,
+  Nequi = 4,
+  PagoMovil = 5,
+  Zelle = 6,
+  Wise = 7,
 }
 
 export type FiatCurrencyCodeValue = number;
@@ -100,6 +110,9 @@ export interface UiOrder {
   createdBy: string;
   filler?: string;
   paymentMethodLabels?: string[];
+  paymentMethodCodes?: PaymentMethodCodeValue[];
+  minTradeAmount?: number;
+  maxTradeAmount?: number;
   displayName?: string;
   isVerified?: boolean;
   reputation_score?: number;
@@ -114,6 +127,9 @@ export interface CreateOrderInput {
   rate: number;
   fiatCurrencyCode: FiatCurrencyCodeValue;
   paymentMethodCode: PaymentMethodCodeValue;
+  paymentMethodCodes?: PaymentMethodCodeValue[];
+  minTradeAmount?: number;
+  maxTradeAmount?: number;
   durationSecs: number;
 }
 
