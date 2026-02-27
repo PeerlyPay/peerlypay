@@ -17,7 +17,6 @@ import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 const POLL_INTERVAL_MS = 5000;
-const TOKEN_SCALE = 10_000_000;
 
 // ============================================
 // WAITING CONTENT
@@ -29,8 +28,9 @@ function WaitingContent() {
   const walletAddress = useStore((state) => state.user.walletAddress);
   const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
 
-  const amount = parseFloat(searchParams.get('amount') || '0.11');
-  const requestedAmount = parseFloat(searchParams.get('requestedAmount') || String(amount));
+  const flowId = searchParams.get('flowId') || '';
+  const fillUsdc = parseFloat(searchParams.get('fillUsdc') || searchParams.get('amount') || '0.11');
+  const intentUsdc = parseFloat(searchParams.get('intentUsdc') || searchParams.get('requestedAmount') || String(fillUsdc));
   const mode = (searchParams.get('mode') || 'buy') as 'buy' | 'sell';
   const orderId = searchParams.get('orderId') || '';
 
@@ -39,6 +39,13 @@ function WaitingContent() {
   const [orderStatus, setOrderStatus] = useState<P2POrderStatus | null>(null);
   const [order, setOrder] = useState<ChainOrder | null>(null);
   const [makerLabel, setMakerLabel] = useState('counterparty');
+  const [initialFilledAmount, setInitialFilledAmount] = useState<bigint | null>(null);
+
+  const navigateToSuccess = useCallback(() => {
+    router.push(
+      `/trade/success?flowId=${encodeURIComponent(flowId)}&fillUsdc=${fillUsdc.toFixed(2)}&intentUsdc=${intentUsdc.toFixed(2)}&mode=${mode}&orderId=${orderId}`,
+    );
+  }, [fillUsdc, flowId, intentUsdc, mode, orderId, router]);
 
   const pollOrder = useCallback(async () => {
     if (!orderId) {
@@ -53,16 +60,28 @@ function WaitingContent() {
       setOrderStatus(nextOrder.status);
       setMakerLabel(`${nextOrder.creator.slice(0, 6)}...${nextOrder.creator.slice(-4)}`);
 
+      if (initialFilledAmount === null) {
+        setInitialFilledAmount(nextOrder.filled_amount);
+      }
+
       if (nextOrder.status === 'Completed') {
-        const executedAmount = Number(nextOrder.amount) / TOKEN_SCALE;
-        router.push(`/trade/success?amount=${executedAmount.toFixed(2)}&requestedAmount=${requestedAmount.toFixed(2)}&mode=${mode}&orderId=${orderId}`);
+        navigateToSuccess();
+        return;
+      }
+
+      if (
+        initialFilledAmount !== null &&
+        nextOrder.status === 'AwaitingFiller' &&
+        nextOrder.filled_amount > initialFilledAmount
+      ) {
+        navigateToSuccess();
       }
     } catch (error) {
       console.error('Failed to poll order status', error);
     } finally {
       setIsChecking(false);
     }
-  }, [mode, orderId, requestedAmount, router]);
+  }, [initialFilledAmount, navigateToSuccess, orderId]);
 
   useEffect(() => {
     void pollOrder();
@@ -92,14 +111,14 @@ function WaitingContent() {
         orderId,
       });
       await refreshOrdersFromChain();
-      await pollOrder();
+      navigateToSuccess();
     } catch (error) {
       console.error('Failed to confirm fiat payment', error);
       toast.error('Failed to confirm fiat payment');
     } finally {
       setIsConfirming(false);
     }
-  }, [orderId, pollOrder, refreshOrdersFromChain, wallet, walletAddress]);
+  }, [navigateToSuccess, orderId, refreshOrdersFromChain, wallet, walletAddress]);
 
   const userIsCreator = useMemo(() => {
     if (!walletAddress || !order) {
@@ -133,8 +152,12 @@ function WaitingContent() {
   const verifyPaymentLabel = isConfirming
     ? 'Confirming...'
     : canConfirmPaymentReceipt
-      ? 'Confirm payment received'
-      : 'Waiting for buyer payment';
+      ? mode === 'sell'
+        ? 'Confirm vendor paid'
+        : 'Confirm payment received'
+      : mode === 'sell'
+        ? 'Waiting for vendor payout'
+        : 'Waiting for buyer payment';
 
   const counterpartyLabel = useMemo(() => {
     if (!order) {
@@ -156,10 +179,14 @@ function WaitingContent() {
     if (orderStatus === 'AwaitingPayment') {
       if (userIsCryptoSeller) {
         return {
-          header: 'Waiting for Buyer Payment',
-          title: 'Waiting for buyer payment',
-          body: 'The buyer needs to send fiat and mark payment as sent.',
-          note: 'After that, you will verify receipt before releasing USDC.',
+          header: mode === 'sell' ? 'Waiting for Vendor Payout' : 'Waiting for Buyer Payment',
+          title: mode === 'sell' ? 'Waiting for vendor payout' : 'Waiting for buyer payment',
+          body: mode === 'sell'
+            ? 'Counterparty must send ARS to your vendor and mark payment as sent.'
+            : 'The buyer needs to send fiat and mark payment as sent.',
+          note: mode === 'sell'
+            ? 'Confirm once your vendor validates the incoming transfer.'
+            : 'After that, you will verify receipt before releasing USDC.',
         };
       }
 
@@ -174,9 +201,11 @@ function WaitingContent() {
     if (orderStatus === 'AwaitingConfirmation') {
       if (userIsCryptoSeller) {
         return {
-          header: 'Verify Payment',
-          title: 'Verify fiat payment received',
-          body: 'Check your bank or wallet and confirm once funds arrive.',
+          header: mode === 'sell' ? 'Verify Vendor Payment' : 'Verify Payment',
+          title: mode === 'sell' ? 'Verify vendor received fiat' : 'Verify fiat payment received',
+          body: mode === 'sell'
+            ? 'Check with your vendor and confirm once they receive the transfer.'
+            : 'Check your bank or wallet and confirm once funds arrive.',
           note: 'Confirming will release USDC from escrow.',
         };
       }
@@ -204,7 +233,7 @@ function WaitingContent() {
       body: 'Fetching current contract state for this order.',
       note: 'Please keep this screen open.',
     };
-  }, [orderStatus, userIsCryptoSeller]);
+  }, [mode, orderStatus, userIsCryptoSeller]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-white">
@@ -287,6 +316,8 @@ function WaitingContent() {
           key={counterpartyLabel}
           triggerLabel="Message counterparty"
           sellerLabel={counterpartyLabel}
+          flowId={flowId}
+          enableVendorRequest={mode === 'sell'}
           triggerClassName="w-full h-12 rounded-2xl font-[family-name:var(--font-space-grotesk)] text-base font-semibold text-fuchsia-600 border border-fuchsia-200 bg-white hover:bg-fuchsia-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
         />
         <button

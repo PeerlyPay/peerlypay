@@ -19,12 +19,22 @@ const FIAT_LABELS: Record<number, string> = {
   [FiatCurrencyCode.Ars]: 'ARS',
   [FiatCurrencyCode.Cop]: 'COP',
   [FiatCurrencyCode.Gbp]: 'GBP',
+  [FiatCurrencyCode.Ves]: 'VES',
+  [FiatCurrencyCode.Brl]: 'BRL',
+  [FiatCurrencyCode.Mxn]: 'MXN',
+  [FiatCurrencyCode.Clp]: 'CLP',
+  [FiatCurrencyCode.Pen]: 'PEN',
 };
 
 const PAYMENT_LABELS: Record<number, string> = {
   [PaymentMethodCode.BankTransfer]: 'Bank Transfer',
   [PaymentMethodCode.MobileWallet]: 'Mobile Wallet',
   [PaymentMethodCode.Cash]: 'Cash',
+  [PaymentMethodCode.MercadoPago]: 'Mercado Pago',
+  [PaymentMethodCode.Nequi]: 'Nequi',
+  [PaymentMethodCode.PagoMovil]: 'Pago Móvil',
+  [PaymentMethodCode.Zelle]: 'Zelle',
+  [PaymentMethodCode.Wise]: 'Wise',
 };
 
 const DURATION_LABELS: Record<number, string> = {
@@ -65,11 +75,22 @@ export function fromCryptoToOrderType(fromCrypto: boolean): OrderType {
 
 // Contract-to-UI mapping
 export function chainToUiOrder(chain: ChainOrder): UiOrder {
+  const totalAmount = tokenAmountFromChain(chain.amount);
+  const remainingAmount = tokenAmountFromChain(chain.remaining_amount);
+  const filledAmount = tokenAmountFromChain(chain.filled_amount);
+  const activeFillAmount = chain.active_fill_amount
+    ? tokenAmountFromChain(chain.active_fill_amount)
+    : 0;
+
   return {
     id: chain.order_id.toString(),
     orderId: chain.order_id,
     type: fromCryptoToOrderType(chain.from_crypto),
-    amount: tokenAmountFromChain(chain.amount),
+    totalAmount,
+    remainingAmount,
+    filledAmount,
+    activeFillAmount,
+    amount: remainingAmount,
     rate: Number(chain.exchange_rate),
     fiatCurrencyCode: chain.fiat_currency_code,
     fiatCurrencyLabel: fiatCurrencyLabel(chain.fiat_currency_code),

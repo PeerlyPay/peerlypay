@@ -1,13 +1,28 @@
-import { create } from 'zustand';
-import { User, Order, CreateOrderInput, P2POrderStatus, FiatCurrencyCode, PaymentMethodCode } from '@/types';
-import { durationLabel, fiatCurrencyLabel, paymentMethodLabel } from '@/lib/order-mapper';
-import { loadOrdersFromContract } from '@/lib/p2p';
+import { create } from "zustand";
+import {
+  User,
+  Order,
+  CreateOrderInput,
+  P2POrderStatus,
+  FiatCurrencyCode,
+  PaymentMethodCode,
+} from "@/types";
+import {
+  durationLabel,
+  fiatCurrencyLabel,
+  paymentMethodLabel,
+} from "@/lib/order-mapper";
+import { loadOrdersFromContract } from "@/lib/p2p";
 
 // Store contract and actions
 interface AppState {
   user: User;
   orders: Order[];
-  connectWallet: (walletAddress: string, walletOwner?: string | null, walletStatus?: string | null) => void;
+  connectWallet: (
+    walletAddress: string,
+    walletOwner?: string | null,
+    walletStatus?: string | null,
+  ) => void;
   setWalletStatus: (walletStatus: string | null) => void;
   disconnectWallet: () => void;
   setBalance: (usdc: number) => void;
@@ -23,7 +38,7 @@ export const useStore = create<AppState>((set) => ({
   user: {
     walletAddress: null,
     walletOwner: null,
-    walletStatus: 'logged-out',
+    walletStatus: "logged-out",
     isConnected: false,
     balance: {
       usd: 0,
@@ -33,26 +48,34 @@ export const useStore = create<AppState>((set) => ({
   },
   orders: [
     {
-      id: 'order_1',
+      id: "order_1",
       orderId: BigInt(1),
-      type: 'sell',
+      type: "sell",
+      totalAmount: 100,
+      remainingAmount: 100,
+      filledAmount: 0,
+      activeFillAmount: 0,
       amount: 100,
-      rate: 950,
+      rate: 1400,
       fiatCurrencyCode: FiatCurrencyCode.Ars,
       fiatCurrencyLabel: fiatCurrencyLabel(FiatCurrencyCode.Ars),
       paymentMethodCode: PaymentMethodCode.BankTransfer,
       paymentMethodLabel: paymentMethodLabel(PaymentMethodCode.BankTransfer),
       durationSecs: 86400,
       durationLabel: durationLabel(86400),
-      status: 'AwaitingFiller',
+      status: "AwaitingFiller",
       createdAt: new Date(),
-      createdBy: '0x1234...5678',
+      createdBy: "0x1234...5678",
       reputation_score: 47,
     },
     {
-      id: 'order_2',
+      id: "order_2",
       orderId: BigInt(2),
-      type: 'sell',
+      type: "sell",
+      totalAmount: 50,
+      remainingAmount: 50,
+      filledAmount: 0,
+      activeFillAmount: 0,
       amount: 50,
       rate: 955,
       fiatCurrencyCode: FiatCurrencyCode.Ars,
@@ -61,15 +84,19 @@ export const useStore = create<AppState>((set) => ({
       paymentMethodLabel: paymentMethodLabel(PaymentMethodCode.MobileWallet),
       durationSecs: 259200,
       durationLabel: durationLabel(259200),
-      status: 'AwaitingFiller',
+      status: "AwaitingFiller",
       createdAt: new Date(),
-      createdBy: '0x9876...4321',
+      createdBy: "0x9876...4321",
       reputation_score: 0,
     },
     {
-      id: 'order_3',
+      id: "order_3",
       orderId: BigInt(3),
-      type: 'buy',
+      type: "buy",
+      totalAmount: 200,
+      remainingAmount: 200,
+      filledAmount: 0,
+      activeFillAmount: 0,
       amount: 200,
       rate: 945,
       fiatCurrencyCode: FiatCurrencyCode.Ars,
@@ -78,15 +105,19 @@ export const useStore = create<AppState>((set) => ({
       paymentMethodLabel: paymentMethodLabel(PaymentMethodCode.BankTransfer),
       durationSecs: 86400,
       durationLabel: durationLabel(86400),
-      status: 'AwaitingFiller',
+      status: "AwaitingFiller",
       createdAt: new Date(),
-      createdBy: '0xABCD...EF01',
+      createdBy: "0xABCD...EF01",
       reputation_score: 23,
     },
     {
-      id: 'order_4',
+      id: "order_4",
       orderId: BigInt(4),
-      type: 'buy',
+      type: "buy",
+      totalAmount: 75,
+      remainingAmount: 75,
+      filledAmount: 0,
+      activeFillAmount: 0,
       amount: 75,
       rate: 948,
       fiatCurrencyCode: FiatCurrencyCode.Ars,
@@ -95,15 +126,19 @@ export const useStore = create<AppState>((set) => ({
       paymentMethodLabel: paymentMethodLabel(PaymentMethodCode.MobileWallet),
       durationSecs: 604800,
       durationLabel: durationLabel(604800),
-      status: 'AwaitingFiller',
+      status: "AwaitingFiller",
       createdAt: new Date(),
-      createdBy: '0x5555...6666',
+      createdBy: "0x5555...6666",
       reputation_score: 89,
     },
   ],
 
   // Wallet session actions
-  connectWallet: (walletAddress, walletOwner = null, walletStatus = 'logged-in') => {
+  connectWallet: (
+    walletAddress,
+    walletOwner = null,
+    walletStatus = "logged-in",
+  ) => {
     set((state) => ({
       user: {
         ...state.user,
@@ -124,14 +159,14 @@ export const useStore = create<AppState>((set) => ({
       },
     }));
   },
-  
+
   disconnectWallet: () => {
     set((state) => ({
       user: {
         ...state.user,
         walletAddress: null,
         walletOwner: null,
-        walletStatus: 'logged-out',
+        walletStatus: "logged-out",
         isConnected: false,
         balance: {
           usd: 0,
@@ -158,7 +193,10 @@ export const useStore = create<AppState>((set) => ({
 
   addBalance: (amount) => {
     set((state) => {
-      const next = Math.max(0, Math.round((state.user.balance.usdc + amount) * 100) / 100);
+      const next = Math.max(
+        0,
+        Math.round((state.user.balance.usdc + amount) * 100) / 100,
+      );
 
       return {
         user: {
@@ -181,7 +219,10 @@ export const useStore = create<AppState>((set) => ({
       }
 
       success = true;
-      const next = Math.max(0, Math.round((state.user.balance.usdc - amount) * 100) / 100);
+      const next = Math.max(
+        0,
+        Math.round((state.user.balance.usdc - amount) * 100) / 100,
+      );
 
       return {
         user: {
@@ -206,12 +247,24 @@ export const useStore = create<AppState>((set) => ({
           id: `${Date.now()}`,
           orderId: BigInt(Date.now()),
           ...input,
+          totalAmount: input.amount,
+          remainingAmount: input.amount,
+          filledAmount: 0,
+          activeFillAmount: 0,
           fiatCurrencyLabel: fiatCurrencyLabel(input.fiatCurrencyCode),
           paymentMethodLabel: paymentMethodLabel(input.paymentMethodCode),
+          paymentMethodLabels: input.paymentMethodCodes
+            ? input.paymentMethodCodes.map((c) => paymentMethodLabel(c))
+            : [paymentMethodLabel(input.paymentMethodCode)],
+          paymentMethodCodes: input.paymentMethodCodes ?? [
+            input.paymentMethodCode,
+          ],
+          minTradeAmount: input.minTradeAmount,
+          maxTradeAmount: input.maxTradeAmount,
           durationLabel: durationLabel(input.durationSecs),
-          status: 'AwaitingFiller',
+          status: "AwaitingFiller",
           createdAt: new Date(),
-          createdBy: state.user.walletAddress ?? 'wallet-not-connected',
+          createdBy: state.user.walletAddress ?? "wallet-not-connected",
           reputation_score: state.user.reputation_score ?? 12,
         },
       ],
@@ -221,7 +274,7 @@ export const useStore = create<AppState>((set) => ({
   updateOrderStatus: (orderId: string, status: P2POrderStatus) => {
     set((state) => ({
       orders: state.orders.map((order) =>
-        order.id === orderId ? { ...order, status } : order
+        order.id === orderId ? { ...order, status } : order,
       ),
     }));
   },
@@ -236,7 +289,7 @@ export const useStore = create<AppState>((set) => ({
 
       set({ orders: chainOrders });
     } catch (error) {
-      console.error('Failed to refresh orders from contract', error);
+      console.error("Failed to refresh orders from contract", error);
     }
   },
 }));

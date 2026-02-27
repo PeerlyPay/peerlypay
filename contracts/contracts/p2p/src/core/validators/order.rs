@@ -75,3 +75,22 @@ pub fn ensure_filler(order: &Order, caller: &Address) -> Result<(), ContractErro
         None => Err(ContractError::MissingFiller),
     }
 }
+
+pub fn validate_fill_amount(order: &Order, fill_amount: i128) -> Result<(), ContractError> {
+    if fill_amount <= 0 {
+        return Err(ContractError::InvalidFillAmount);
+    }
+
+    if fill_amount > order.remaining_amount {
+        return Err(ContractError::FillAmountExceedsRemaining);
+    }
+
+    Ok(())
+}
+
+pub fn ensure_active_fill_amount(order: &Order) -> Result<i128, ContractError> {
+    match order.active_fill_amount {
+        Some(amount) if amount > 0 => Ok(amount),
+        _ => Err(ContractError::MissingActiveFill),
+    }
+}

@@ -5,7 +5,7 @@ use crate::core::admin::AdminManager;
 use crate::core::order::OrderManager;
 use crate::core::validators::admin::{ensure_dispute_resolver, ensure_not_paused};
 use crate::core::validators::dispute::{ensure_disputable, ensure_disputed};
-use crate::core::validators::order::{ensure_creator, ensure_filler};
+use crate::core::validators::order::{ensure_active_fill_amount, ensure_creator, ensure_filler};
 use crate::error::ContractError;
 use crate::storage::types::{DataKey, Order, OrderStatus};
 
@@ -51,17 +51,31 @@ impl DisputeManager {
 
         let mut order = OrderManager::get_order(e, order_id)?;
         ensure_disputed(&order)?;
+        let active_fill_amount = ensure_active_fill_amount(&order)?;
 
         let token_client = TokenClient::new(e, &config.token);
         let recipient = if fiat_transfer_confirmed {
-            order.status = OrderStatus::Completed;
+            order.filled_amount = order
+                .filled_amount
+                .checked_add(active_fill_amount)
+                .ok_or(ContractError::Overflow)?;
+            order.remaining_amount = order
+                .remaining_amount
+                .checked_sub(active_fill_amount)
+                .ok_or(ContractError::Underflow)?;
+
+            order.status = if order.remaining_amount == 0 {
+                OrderStatus::Completed
+            } else {
+                OrderStatus::AwaitingFiller
+            };
             if order.from_crypto {
                 order.filler.clone().ok_or(ContractError::MissingFiller)?
             } else {
                 order.creator.clone()
             }
         } else {
-            order.status = OrderStatus::Refunded;
+            order.status = OrderStatus::AwaitingFiller;
             if order.from_crypto {
                 order.creator.clone()
             } else {
@@ -69,7 +83,14 @@ impl DisputeManager {
             }
         };
 
-        token_client.transfer(&e.current_contract_address(), &recipient, &order.amount);
+        token_client.transfer(
+            &e.current_contract_address(),
+            &recipient,
+            &active_fill_amount,
+        );
+        order.filler = None;
+        order.active_fill_amount = None;
+        order.fiat_transfer_deadline = None;
         e.storage()
             .instance()
             .set(&DataKey::Order(order.order_id), &order);

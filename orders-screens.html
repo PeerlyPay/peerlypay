@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeerlyPay — Orders Flow Screens</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+<style>
+  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --fuchsia-50:#fdf4ff; --fuchsia-100:#fae8ff; --fuchsia-200:#f0abfc; --fuchsia-500:#d946ef; --fuchsia-600:#c026d3;
+    --emerald-50:#ecfdf5; --emerald-100:#d1fae5; --emerald-500:#10b981; --emerald-600:#059669;
+    --lime-100:#ecfccb; --lime-200:#d9f99d; --lime-500:#84cc16; --lime-700:#4d7c0f;
+    --amber-50:#fffbeb; --amber-200:#fde68a; --amber-400:#fbbf24;
+    --red-100:#fee2e2; --red-200:#fecaca; --red-500:#ef4444; --red-600:#dc2626; --red-700:#b91c1c;
+    --indigo-100:#e0e7ff; --indigo-200:#c7d2fe; --indigo-500:#6366f1; --indigo-700:#4338ca;
+    --cyan-50:#ecfeff; --cyan-700:#0e7490;
+    --yellow-50:#fefce8; --yellow-200:#fef08a; --yellow-600:#ca8a04; --yellow-800:#854d0e;
+    --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb; --gray-300:#d1d5db; --gray-400:#9ca3af; --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-800:#1f2937; --gray-900:#111827;
+    --primary-500:#d946ef; --primary-600:#c026d3;
+    --font-display:'Space Grotesk',sans-serif; --font-mono:'JetBrains Mono',monospace; --font-body:'DM Sans',sans-serif;
+  }
+  body { background:#f0f0f2; font-family:var(--font-body); padding:48px 32px; }
+  h1.page-title { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--gray-900); text-align:center; margin-bottom:8px; }
+  p.page-sub { font-family:var(--font-body); font-size:14px; color:var(--gray-500); text-align:center; margin-bottom:48px; }
+  .grid { display:grid; grid-template-columns:repeat(4,390px); gap:48px 36px; justify-content:center; }
+  .screen-wrapper { display:flex; flex-direction:column; align-items:center; }
+  .screen-label { font-family:var(--font-display); font-size:13px; font-weight:600; color:var(--gray-500); text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+  .screen-label span { display:inline-block; background:var(--gray-200); color:var(--gray-600); border-radius:4px; padding:2px 8px; font-size:11px; margin-left:6px; letter-spacing:0; text-transform:none; font-weight:500; }
+  .phone { width:390px; height:844px; border-radius:40px; overflow:hidden; background:#fff; box-shadow:0 8px 40px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06); position:relative; display:flex; flex-direction:column; }
+  .phone::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:160px; height:34px; background:#000; border-radius:0 0 20px 20px; z-index:10; }
+  .status-bar { height:54px; flex-shrink:0; }
+  .phone-body { flex:1; display:flex; flex-direction:column; min-height:0; overflow-y:auto; padding:0 16px 24px; }
+
+  /* ── Common ─────────────── */
+  .header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+  .header-row h2 { font-family:var(--font-display); font-size:20px; font-weight:700; color:#000; }
+  .icon-btn { width:36px; height:36px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; background:var(--gray-100); }
+  .icon-btn svg { width:16px; height:16px; color:var(--gray-500); }
+
+  .badge { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:11px; font-weight:500; border:1px solid; }
+  .badge .dot { width:6px; height:6px; border-radius:50%; }
+  .badge-active { border-color:var(--indigo-200); background:var(--indigo-100); color:var(--indigo-700); }
+  .badge-active .dot { background:var(--indigo-500); }
+  .badge-completed { border-color:var(--lime-200); background:var(--lime-100); color:var(--lime-700); }
+  .badge-completed .dot { background:var(--lime-500); }
+  .badge-disputed { border-color:var(--red-200); background:var(--red-100); color:var(--red-700); }
+  .badge-disputed .dot { background:var(--red-500); }
+
+  /* Trade Card */
+  .trade-card { width:100%; background:#fff; border:1px solid var(--gray-200); border-radius:8px; padding:16px; box-shadow:0 4px 4px rgba(174,174,174,.25); margin-bottom:12px; }
+  .trade-card .top-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .trade-card .sold { font-family:var(--font-display); font-size:15px; font-weight:600; color:#191919; }
+  .trade-card .received { font-size:12px; color:#0f172a; }
+  .trade-card .received strong { font-weight:700; }
+  .trade-card .date { margin-top:12px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:#404040; }
+
+  /* Skeleton */
+  .skeleton { border-radius:6px; background:var(--gray-200); }
+  .skel-card { background:#fff; border:1px solid var(--gray-200); border-radius:12px; padding:16px; margin-bottom:12px; }
+
+  /* Empty state */
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px; text-align:center; }
+  .empty-state svg { width:56px; height:56px; color:var(--gray-300); margin-bottom:16px; }
+  .empty-state h3 { font-family:var(--font-display); font-size:16px; font-weight:600; color:var(--gray-900); margin-bottom:8px; }
+  .empty-state p { font-size:14px; color:var(--gray-500); margin-bottom:16px; }
+  .empty-state .action-btn { padding:8px 24px; border-radius:12px; border:none; background:var(--fuchsia-500); color:#fff; font-family:var(--font-display); font-size:14px; font-weight:600; cursor:pointer; }
+
+  /* Filter chips */
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:500; background:var(--fuchsia-50); color:var(--fuchsia-600); border:1px solid var(--fuchsia-200); }
+  .chip .x { width:12px; height:12px; }
+
+  /* Order Card (marketplace) */
+  .order-card { border:1px solid var(--gray-200); border-radius:12px; background:#fff; padding:16px; margin-bottom:16px; }
+  .order-card .avatar-row { display:flex; align-items:center; gap:12px; }
+  .order-card .avatar { width:40px; height:40px; border-radius:50%; background:var(--primary-500); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:14px; font-weight:700; color:#fff; position:relative; }
+  .order-card .avatar .online { position:absolute; bottom:0; right:0; width:8px; height:8px; border-radius:50%; background:#10b981; border:2px solid #fff; }
+  .order-card .username { font-size:16px; font-weight:600; color:var(--gray-900); }
+  .order-card .meta-row { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--gray-500); margin-top:8px; }
+  .order-card .rep-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:var(--cyan-50); color:var(--cyan-700); font-size:12px; font-weight:600; }
+  .order-card .rate { font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--gray-900); margin-top:8px; }
+  .order-card .limits { font-size:14px; color:var(--gray-600); margin-top:4px; }
+  .order-card .bottom-row { display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+  .order-card .payment { font-size:14px; color:var(--gray-700); }
+  .order-card .buy-btn { padding:10px 24px; border-radius:999px; border:none; background:linear-gradient(135deg,var(--primary-500),var(--primary-600)); color:#fff; font-family:var(--font-display); font-size:14px; font-weight:700; cursor:pointer; }
+
+  /* Tabs */
+  .tabs { display:flex; gap:12px; margin-bottom:24px; }
+  .tab { flex:1; padding:12px; border-radius:12px; border:none; font-weight:600; font-size:14px; cursor:pointer; transition:all .2s; }
+  .tab-active { background:var(--fuchsia-500); color:#fff; }
+  .tab-inactive { background:var(--gray-100); color:var(--gray-600); }
+
+  /* Reputation card */
+  .rep-card { border-radius:12px; overflow:hidden; margin-bottom:24px; box-shadow:0 2px 12px rgba(0,0,0,.08); position:relative; }
+  .rep-card .mesh { position:absolute; inset:0; background:radial-gradient(at 0% 0%,rgba(255,182,193,.6) 0,transparent 50%),radial-gradient(at 100% 0%,rgba(173,216,255,.6) 0,transparent 50%),radial-gradient(at 100% 100%,rgba(221,160,255,.6) 0,transparent 50%),radial-gradient(at 0% 100%,rgba(152,251,200,.5) 0,transparent 50%); }
+  .rep-card .inner { position:relative; padding:20px; background:rgba(255,255,255,.55); backdrop-filter:blur(24px); border:1px solid rgba(255,255,255,.3); border-radius:12px; }
+  .rep-card .label { font-size:13px; font-weight:600; color:var(--gray-800); margin-bottom:8px; }
+  .rep-card .score { font-family:var(--font-display); font-size:36px; font-weight:700; color:var(--gray-900); }
+  .rep-card .trades { font-size:13px; color:var(--gray-700); margin-top:4px; }
+
+  /* Stats */
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px; }
+  .stat-box { border:1px solid var(--gray-200); border-radius:12px; background:#fff; padding:16px; text-align:center; }
+  .stat-box .num { font-size:24px; font-weight:700; }
+  .stat-box .lbl { font-size:12px; font-weight:500; color:var(--gray-500); margin-top:4px; }
+
+  /* Create Order form */
+  .form-group { margin-bottom:20px; }
+  .form-label { display:block; font-size:14px; font-weight:600; color:var(--gray-700); margin-bottom:8px; }
+  .number-field { display:flex; align-items:center; gap:8px; }
+  .number-field .step-btn { width:40px; height:40px; border-radius:12px; border:1px solid var(--gray-200); background:var(--gray-50); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .number-field .step-btn svg { width:16px; height:16px; color:var(--gray-600); }
+  .number-field input { flex:1; height:40px; border:1px solid var(--gray-200); border-radius:12px; background:var(--gray-50); text-align:center; font-size:15px; font-family:var(--font-body); }
+  .select-field { width:100%; height:40px; border:1px solid var(--gray-200); border-radius:12px; background:var(--gray-50); padding:0 12px; font-size:14px; font-family:var(--font-body); appearance:none; background-image:url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .alert-box { padding:12px 16px; border-radius:12px; background:var(--yellow-50); border:1px solid var(--yellow-200); }
+  .alert-box .alert-title { font-size:13px; font-weight:700; color:var(--yellow-800); margin-bottom:4px; }
+  .alert-box .alert-body { font-size:13px; color:rgba(133,77,14,.9); }
+  .btn-gradient { width:100%; height:48px; border-radius:999px; border:none; background:linear-gradient(135deg,var(--primary-500),var(--primary-600)); color:#fff; font-family:var(--font-display); font-size:15px; font-weight:700; cursor:pointer; }
+  .btn-gradient:disabled { opacity:.7; cursor:not-allowed; }
+
+  /* Wallet connect warning */
+  .wallet-warn { border:1px solid var(--amber-200); background:var(--amber-50); border-radius:16px; padding:20px; }
+  .wallet-warn h3 { font-family:var(--font-display); font-size:20px; font-weight:600; color:#78350f; margin-bottom:8px; }
+  .wallet-warn p { font-size:14px; color:#92400e; margin-bottom:16px; }
+  .wallet-warn .connect-btn { width:100%; height:44px; border-radius:999px; border:none; background:linear-gradient(135deg,var(--primary-500),var(--primary-600)); color:#fff; font-family:var(--font-display); font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+
+  /* Type selector tabs */
+  .type-tabs { display:flex; border-bottom:1px solid var(--gray-200); margin-bottom:24px; }
+  .type-tab { flex:1; padding:12px 0; text-align:center; font-size:14px; font-weight:500; color:var(--gray-500); border:none; background:none; cursor:pointer; position:relative; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .type-tab svg { width:16px; height:16px; }
+  .type-tab.active { color:var(--primary-600); font-weight:600; }
+  .type-tab.active::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:2px; background:var(--primary-500); }
+
+  /* Escrow stepper */
+  .stepper { display:flex; align-items:flex-start; position:relative; margin-bottom:24px; }
+  .stepper .track { position:absolute; top:20px; left:20px; right:20px; height:2px; background:var(--gray-200); }
+  .stepper .progress { position:absolute; top:20px; left:20px; height:2px; background:var(--lime-500); transition:width .3s; }
+  .step-item { flex:1; display:flex; flex-direction:column; align-items:center; position:relative; z-index:1; }
+  .step-circle { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600; }
+  .step-circle.done { background:var(--lime-500); color:#fff; }
+  .step-circle.active { background:var(--primary-500); color:#fff; }
+  .step-circle.pending { background:var(--gray-200); color:var(--gray-400); }
+  .step-circle svg { width:20px; height:20px; }
+  .step-label { font-size:11px; font-weight:600; text-align:center; margin-top:6px; color:var(--gray-900); }
+  .step-desc { font-size:9px; color:var(--gray-500); text-align:center; margin-top:2px; }
+
+  /* Order detail card */
+  .detail-card { border:1px solid var(--gray-200); border-radius:12px; background:#fff; padding:20px; box-shadow:0 1px 4px rgba(0,0,0,.04); margin-bottom:16px; }
+  .detail-row { display:flex; justify-content:space-between; align-items:center; padding:4px 0; }
+  .detail-row + .detail-row { margin-top:12px; }
+  .detail-row .dlabel { font-size:13px; font-weight:500; color:var(--gray-600); }
+  .detail-row .dvalue { font-family:var(--font-display); font-size:14px; font-weight:600; color:var(--gray-900); }
+  .detail-row .dvalue.primary { color:var(--primary-600); font-size:18px; }
+  .detail-row .dvalue.mono { font-family:var(--font-mono); font-size:13px; }
+
+  /* Status badge inline */
+  .status-pill { display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border:2px solid var(--fuchsia-200); border-radius:12px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+  .status-pill svg { width:20px; height:20px; color:var(--primary-600); }
+  .status-pill .sptext { font-size:14px; font-weight:600; color:var(--gray-900); }
+  .status-pill .spsub { font-size:13px; color:var(--gray-500); }
+
+  /* Chat mockup */
+  .chat-box { border:1px solid var(--gray-200); border-radius:12px; background:#fff; overflow:hidden; margin-bottom:16px; }
+  .chat-messages { padding:12px; max-height:120px; overflow-y:auto; }
+  .msg { padding:8px 12px; border-radius:12px; margin-bottom:8px; max-width:80%; font-size:13px; }
+  .msg-system { background:var(--fuchsia-50); border:1px solid var(--fuchsia-100); color:var(--gray-700); }
+  .msg-own { background:rgba(217,70,239,.1); margin-left:auto; color:var(--gray-900); }
+  .msg-other { background:var(--gray-50); color:var(--gray-900); }
+  .msg .sender { font-size:11px; font-weight:600; color:var(--gray-500); margin-bottom:2px; }
+  .chat-input { display:flex; align-items:center; gap:8px; padding:8px 12px; border-top:1px solid var(--gray-200); }
+  .chat-input input { flex:1; height:36px; border:1px solid var(--gray-200); border-radius:8px; padding:0 12px; font-size:13px; }
+  .chat-input button { width:36px; height:36px; border-radius:8px; border:none; background:var(--primary-500); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .chat-input button svg { width:16px; height:16px; }
+
+  /* Success completion */
+  .success-circle { width:80px; height:80px; border-radius:50%; background:var(--emerald-500); display:flex; align-items:center; justify-content:center; margin:0 auto 24px; }
+  .success-circle svg { width:40px; height:40px; stroke:#fff; stroke-width:2.5; fill:none; }
+
+  /* Filter sheet */
+  .filter-sheet { background:#fff; border-radius:16px 16px 0 0; padding:20px; border:1px solid var(--gray-200); margin-top:auto; }
+  .filter-section { margin-bottom:20px; }
+  .filter-section h3 { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--gray-400); margin-bottom:8px; }
+  .filter-check { display:flex; align-items:center; gap:12px; padding:10px 0; }
+  .checkbox { width:20px; height:20px; border-radius:6px; border:2px solid var(--gray-300); display:flex; align-items:center; justify-content:center; }
+  .checkbox.checked { background:var(--fuchsia-500); border-color:var(--fuchsia-500); }
+  .checkbox.checked svg { width:12px; height:12px; stroke:#fff; stroke-width:3; fill:none; }
+  .filter-check .flabel { font-size:14px; color:var(--gray-700); }
+
+  /* Bottom sheet overlay look */
+  .sheet-overlay { position:absolute; bottom:0; left:0; right:0; border-radius:16px 16px 0 0; background:#fff; box-shadow:0 -4px 24px rgba(0,0,0,.12); padding:20px; z-index:5; }
+
+  /* Trade detail sheet */
+  .detail-sheet-summary { background:var(--gray-50); border-radius:16px; padding:16px; margin-bottom:16px; }
+  .detail-sheet-row { display:flex; align-items:center; justify-content:space-between; padding:4px 0; }
+  .detail-sheet-row .dsl { font-size:13px; color:var(--gray-500); }
+  .detail-sheet-row .dsv { font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--gray-900); }
+  .detail-sheet-row .dsv.green { color:var(--emerald-600); }
+
+  /* Timeline */
+  .timeline { margin-bottom:16px; }
+  .timeline-step { display:flex; align-items:flex-start; gap:12px; }
+  .timeline-dot-wrap { display:flex; flex-direction:column; align-items:center; }
+  .timeline-dot { width:10px; height:10px; border-radius:50%; margin-top:6px; flex-shrink:0; }
+  .timeline-dot.done { background:var(--emerald-500); }
+  .timeline-dot.pending { background:var(--gray-300); }
+  .timeline-line { width:2px; height:24px; }
+  .timeline-line.done { background:var(--emerald-100); }
+  .timeline-line.pending { background:var(--gray-200); }
+  .timeline-content { flex:1; display:flex; align-items:center; justify-content:space-between; padding-bottom:12px; }
+  .timeline-content .tl-label { font-size:14px; color:var(--gray-900); font-weight:500; }
+  .timeline-content .tl-label.dim { color:var(--gray-400); }
+  .timeline-content .tl-time { font-family:var(--font-mono); font-size:12px; color:var(--gray-400); }
+
+  /* Txn ID row */
+  .txn-id-row { display:flex; align-items:center; justify-content:space-between; background:var(--gray-50); border-radius:12px; padding:12px 16px; margin-bottom:16px; }
+  .txn-id-row .txn-label { font-size:12px; color:var(--gray-400); }
+  .txn-id-row .txn-val { font-family:var(--font-mono); font-size:14px; color:var(--gray-700); }
+  .copy-btn { width:32px; height:32px; border-radius:8px; border:1px solid var(--gray-200); background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .copy-btn svg { width:16px; height:16px; color:var(--gray-400); }
+
+  /* Rating in sheet */
+  .rating-box { background:var(--gray-50); border-radius:16px; padding:16px; text-align:center; margin-bottom:16px; }
+  .rating-box p { font-size:14px; color:var(--gray-500); margin-bottom:12px; }
+  .rating-box strong { color:var(--gray-900); }
+  .stars { display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:12px; }
+  .stars svg { width:28px; height:28px; }
+  .stars svg.filled { fill:var(--fuchsia-500); color:var(--fuchsia-500); }
+  .stars svg.empty { fill:transparent; color:var(--gray-300); stroke-width:1.5; }
+  .rating-submit-btn { width:100%; height:40px; border-radius:12px; border:none; background:var(--fuchsia-50); color:var(--fuchsia-600); font-family:var(--font-display); font-size:14px; font-weight:600; cursor:pointer; }
+
+  .sheet-action-btn { width:100%; height:48px; border-radius:12px; border:1px solid var(--gray-200); background:#fff; display:flex; align-items:center; justify-content:center; gap:8px; font-family:var(--font-display); font-size:14px; font-weight:600; color:var(--gray-700); cursor:pointer; margin-bottom:12px; }
+  .sheet-action-btn.danger { color:var(--red-500); border:none; }
+  .sheet-action-btn svg { width:16px; height:16px; }
+
+  .btn-primary-sm { width:100%; height:48px; border-radius:12px; border:none; background:var(--fuchsia-500); color:#fff; font-family:var(--font-display); font-size:14px; font-weight:600; cursor:pointer; box-shadow:0 4px 16px rgba(217,70,239,.2); }
+
+  /* Bank detail rows */
+  .bank-row { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--gray-50); border-radius:10px; padding:12px 16px; margin-bottom:8px; }
+  .bank-row .br-label { font-size:13px; font-weight:500; color:var(--gray-600); }
+  .bank-row .br-val { font-family:var(--font-mono); font-size:14px; font-weight:600; color:var(--gray-900); }
+</style>
+</head>
+<body>
+
+<h1 class="page-title">PeerlyPay — Orders Flow</h1>
+<p class="page-sub">All screens and states across the orders management journey</p>
+
+<div class="grid">
+
+<!-- ═══ 1. MY TRADES (Listing) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">1. My Trades <span>Listing</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <div class="header-row">
+        <h2>My Trades</h2>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="icon-btn" style="display:flex;align-items:center;gap:6px;width:auto;padding:0 14px;border:1px solid var(--gray-200);border-radius:12px;height:36px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/></svg>
+            <span style="font-size:13px;font-weight:500;color:var(--gray-600);">Filters</span>
+          </button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg></button>
+        </div>
+      </div>
+
+      <!-- Active trade -->
+      <div class="trade-card">
+        <div class="top-row">
+          <div>
+            <p class="sold">Sold 0.15 USDC</p>
+            <p class="received">Received <strong>$222.75 ARS</strong></p>
+          </div>
+          <div class="badge badge-active"><span class="dot"></span>IN PROGRESS</div>
+        </div>
+        <p class="date">10-02-2026, 3:15 PM</p>
+      </div>
+
+      <!-- Completed trade -->
+      <div class="trade-card">
+        <div class="top-row">
+          <div>
+            <p class="sold">Sold 0.11 USDC</p>
+            <p class="received">Received <strong>$163.35 ARS</strong></p>
+          </div>
+          <div class="badge badge-completed"><span class="dot"></span>COMPLETED</div>
+        </div>
+        <p class="date">09-02-2026, 11:30 AM</p>
+      </div>
+
+      <!-- Another completed -->
+      <div class="trade-card">
+        <div class="top-row">
+          <div>
+            <p class="sold">Sold 0.25 USDC</p>
+            <p class="received">Received <strong>$371.25 ARS</strong></p>
+          </div>
+          <div class="badge badge-completed"><span class="dot"></span>COMPLETED</div>
+        </div>
+        <p class="date">07-02-2026, 9:00 AM</p>
+      </div>
+
+      <div class="trade-card">
+        <div class="top-row">
+          <div>
+            <p class="sold">Sold 0.08 USDC</p>
+            <p class="received">Received <strong>$118.80 ARS</strong></p>
+          </div>
+          <div class="badge badge-completed"><span class="dot"></span>COMPLETED</div>
+        </div>
+        <p class="date">05-02-2026, 4:45 PM</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 2. MY TRADES (Loading) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">2. My Trades <span>Loading</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <div class="header-row">
+        <h2>My Trades</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="icon-btn" style="width:auto;padding:0 14px;border:1px solid var(--gray-200);border-radius:12px;height:36px;display:flex;align-items:center;gap:6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--gray-500)"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/></svg>
+            <span style="font-size:13px;font-weight:500;color:var(--gray-600);">Filters</span>
+          </button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+        </div>
+      </div>
+
+      <div class="skel-card" style="opacity:.6;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+          <div class="skeleton" style="width:128px;height:12px;"></div>
+          <div class="skeleton" style="width:80px;height:20px;border-radius:999px;"></div>
+        </div>
+        <div class="skeleton" style="width:160px;height:16px;margin-bottom:8px;"></div>
+        <div class="skeleton" style="width:192px;height:16px;margin-bottom:12px;"></div>
+        <div style="border-top:1px solid var(--gray-100);padding-top:8px;display:flex;justify-content:space-between;">
+          <div class="skeleton" style="width:128px;height:12px;"></div>
+          <div class="skeleton" style="width:96px;height:12px;"></div>
+        </div>
+      </div>
+      <div class="skel-card" style="opacity:.4;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+          <div class="skeleton" style="width:128px;height:12px;"></div>
+          <div class="skeleton" style="width:80px;height:20px;border-radius:999px;"></div>
+        </div>
+        <div class="skeleton" style="width:160px;height:16px;margin-bottom:8px;"></div>
+        <div class="skeleton" style="width:192px;height:16px;margin-bottom:12px;"></div>
+        <div style="border-top:1px solid var(--gray-100);padding-top:8px;display:flex;justify-content:space-between;">
+          <div class="skeleton" style="width:128px;height:12px;"></div>
+          <div class="skeleton" style="width:96px;height:12px;"></div>
+        </div>
+      </div>
+      <div class="skel-card" style="opacity:.25;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px;">
+          <div class="skeleton" style="width:128px;height:12px;"></div>
+          <div class="skeleton" style="width:80px;height:20px;border-radius:999px;"></div>
+        </div>
+        <div class="skeleton" style="width:160px;height:16px;margin-bottom:8px;"></div>
+        <div class="skeleton" style="width:192px;height:16px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 3. MY TRADES (Empty + Filtered) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">3. My Trades <span>Empty</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <div class="header-row">
+        <h2>My Trades</h2>
+        <div style="display:flex;gap:8px;">
+          <button class="icon-btn" style="width:auto;padding:0 14px;border:1px solid var(--fuchsia-200);border-radius:12px;height:36px;display:flex;align-items:center;gap:6px;background:var(--fuchsia-50);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--fuchsia-600)" stroke-width="2" style="width:16px;height:16px;"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/></svg>
+            <span style="font-size:13px;font-weight:500;color:var(--fuchsia-600);">Filters</span>
+            <span style="min-width:20px;height:20px;padding:0 4px;border-radius:999px;background:var(--fuchsia-500);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</span>
+          </button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+        <span class="chip">Disputed <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg></span>
+      </div>
+
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <h3>No trades match your filters</h3>
+        <p>Try adjusting your filters</p>
+        <button class="action-btn">Clear filters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 4. TRADE DETAIL SHEET ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">4. Trade Detail <span>Sheet</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body" style="position:relative;padding:0;">
+      <!-- Dimmed background cards -->
+      <div style="padding:0 16px;opacity:.3;padding-top:16px;">
+        <div class="trade-card" style="margin-bottom:8px;">
+          <div class="top-row"><div><p class="sold">Sold 0.15 USDC</p></div><div class="badge badge-active"><span class="dot"></span>IN PROGRESS</div></div>
+        </div>
+        <div class="trade-card"><div class="top-row"><div><p class="sold">Sold 0.11 USDC</p></div><div class="badge badge-completed"><span class="dot"></span>COMPLETED</div></div></div>
+      </div>
+
+      <!-- Sheet overlay -->
+      <div class="sheet-overlay" style="max-height:660px;overflow-y:auto;">
+        <div style="width:40px;height:4px;border-radius:2px;background:var(--gray-300);margin:0 auto 16px;"></div>
+        <h3 style="font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:16px;">Trade Details</h3>
+
+        <div style="text-align:center;margin-bottom:16px;">
+          <div class="badge badge-completed" style="font-size:12px;"><span class="dot"></span>COMPLETED</div>
+        </div>
+
+        <div class="detail-sheet-summary">
+          <div class="detail-sheet-row"><span class="dsl">You sold</span><span class="dsv">0.11 USDC</span></div>
+          <div class="detail-sheet-row" style="margin-top:8px;"><span class="dsl">You received</span><span class="dsv green">$163.35 ARS</span></div>
+          <div class="detail-sheet-row" style="margin-top:8px;"><span class="dsl">Rate</span><span class="dsv" style="font-size:13px;">1 USDC = 1,485 ARS</span></div>
+          <div class="detail-sheet-row" style="margin-top:8px;"><span class="dsl">Method</span><span style="font-size:13px;font-weight:500;color:var(--gray-700);">Bank Transfer</span></div>
+          <div class="detail-sheet-row" style="margin-top:8px;"><span class="dsl">Counterparty</span><span style="font-size:13px;font-weight:500;color:var(--gray-700);">@p2p_master <span style="color:var(--fuchsia-500);">★ 4.9</span></span></div>
+        </div>
+
+        <p style="font-size:13px;font-weight:600;color:var(--gray-900);margin-bottom:12px;">Timeline</p>
+        <div class="timeline">
+          <div class="timeline-step"><div class="timeline-dot-wrap"><div class="timeline-dot done"></div><div class="timeline-line done"></div></div><div class="timeline-content"><span class="tl-label">Trade started</span><span class="tl-time">11:30 AM</span></div></div>
+          <div class="timeline-step"><div class="timeline-dot-wrap"><div class="timeline-dot done"></div><div class="timeline-line done"></div></div><div class="timeline-content"><span class="tl-label">Payment sent</span><span class="tl-time">11:31 AM</span></div></div>
+          <div class="timeline-step"><div class="timeline-dot-wrap"><div class="timeline-dot done"></div><div class="timeline-line done"></div></div><div class="timeline-content"><span class="tl-label">USDC released</span><span class="tl-time">11:32 AM</span></div></div>
+          <div class="timeline-step"><div class="timeline-dot-wrap"><div class="timeline-dot done"></div></div><div class="timeline-content"><span class="tl-label">USDC received</span><span class="tl-time">11:33 AM</span></div></div>
+        </div>
+
+        <div class="txn-id-row">
+          <div><p class="txn-label">Transaction ID</p><p class="txn-val">#TXN456789</p></div>
+          <button class="copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+        </div>
+
+        <div class="rating-box">
+          <p>Rate <strong>@p2p_master</strong></p>
+          <div class="stars">
+            <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg class="empty" viewBox="0 0 24 24" stroke="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <button class="rating-submit-btn">Submit rating</button>
+        </div>
+
+        <button class="sheet-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>Download receipt</button>
+        <button class="sheet-action-btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>Report issue</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 5. MY ORDERS (Tabs + Reputation) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">5. My Orders <span>Active Tab</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <h2 style="font-family:var(--font-display);font-size:20px;font-weight:700;margin-bottom:24px;">My Orders</h2>
+
+      <div class="rep-card">
+        <div class="mesh"></div>
+        <div class="inner">
+          <p class="label">Your Reputation</p>
+          <p class="score">⭐ 12</p>
+          <p class="trades">12 completed trades</p>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-box"><p class="num" style="color:var(--fuchsia-600);">4</p><p class="lbl">Active</p></div>
+        <div class="stat-box"><p class="num" style="color:var(--emerald-600);">8</p><p class="lbl">Completed</p></div>
+        <div class="stat-box"><p class="num" style="color:var(--red-600);">0</p><p class="lbl">Disputed</p></div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab tab-active">Active</button>
+        <button class="tab tab-inactive">Completed</button>
+        <button class="tab tab-inactive">Disputed</button>
+      </div>
+
+      <div class="order-card">
+        <div class="avatar-row"><div class="avatar">W<span class="online"></span></div><span class="username">walle1...a3b4</span></div>
+        <div class="meta-row"><span class="rep-badge">⭐ 12 trades</span><span>|</span><span>Window: 1 day</span></div>
+        <p class="rate">1 USDC = 950 ARS</p>
+        <p class="limits">Limits: 10 - 95,000 ARS</p>
+        <div class="bottom-row"><span class="payment">Bank Transfer</span><button class="buy-btn">Buy Now</button></div>
+      </div>
+
+      <div class="order-card">
+        <div class="avatar-row"><div class="avatar">W<span class="online"></span></div><span class="username">walle1...a3b4</span></div>
+        <div class="meta-row"><span class="rep-badge">⭐ 12 trades</span><span>|</span><span>Window: 1 day</span></div>
+        <p class="rate">1 USDC = 955 ARS</p>
+        <p class="limits">Limits: 10 - 47,750 ARS</p>
+        <div class="bottom-row"><span class="payment">Mobile Wallet</span><button class="buy-btn">Buy Now</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 6. CREATE ORDER (Wallet Warning) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">6. Create Order <span>No Wallet</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body" style="display:flex;flex-direction:column;justify-content:center;padding-top:80px;">
+      <div class="wallet-warn">
+        <h3>Connect your wallet first</h3>
+        <p>You need an active Stellar wallet to create orders.</p>
+        <button class="connect-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2.5"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+          Connect Wallet
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 7. CREATE ORDER (Form) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">7. Create Order <span>Form</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <h2 style="font-family:var(--font-display);font-size:20px;font-weight:700;margin-bottom:24px;">Create Order</h2>
+
+      <div class="type-tabs">
+        <button class="type-tab active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2.5"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+          Sell USDC
+        </button>
+        <button class="type-tab">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+          Buy USDC
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">USDC Amount</label>
+        <div class="number-field">
+          <button class="step-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
+          <input type="text" value="100" />
+          <button class="step-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
+        </div>
+      </div>
+
+      <div class="two-col form-group">
+        <div>
+          <label class="form-label">Fiat Currency</label>
+          <select class="select-field"><option>ARS</option></select>
+        </div>
+        <div>
+          <label class="form-label">Exchange Rate</label>
+          <div class="number-field">
+            <button class="step-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
+            <input type="text" value="950" />
+            <button class="step-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col form-group">
+        <div>
+          <label class="form-label">Payment Method</label>
+          <select class="select-field"><option>Bank Transfer</option></select>
+        </div>
+        <div>
+          <label class="form-label">Duration</label>
+          <select class="select-field"><option>1 day</option></select>
+        </div>
+      </div>
+
+      <div class="alert-box" style="margin-bottom:24px;">
+        <p class="alert-title">Important</p>
+        <p class="alert-body">Orders are binding. Ensure your payment details are correct before submitting.</p>
+      </div>
+
+      <button class="btn-gradient">Create Sell Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 8. ORDER DETAIL (Escrow Step 2 — Payment) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">8. Order Detail <span>Payment Step</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <!-- Status pill -->
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px;">
+        <div class="status-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <div><p class="sptext">In progress — Payment</p><p class="spsub">Waiting for payment</p></div>
+        </div>
+        <span style="font-size:13px;color:var(--gray-500);background:var(--gray-100);padding:6px 12px;border-radius:999px;">Next step in: <span style="font-family:var(--font-mono);font-weight:600;color:var(--gray-700);">3…</span></span>
+      </div>
+
+      <!-- Escrow stepper -->
+      <div class="stepper">
+        <div class="track"></div>
+        <div class="progress" style="width:calc((100% - 40px) * 0.5);"></div>
+        <div class="step-item">
+          <div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="step-label">Setup</span><span class="step-desc">Trustline</span>
+        </div>
+        <div class="step-item">
+          <div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <span class="step-label">Deposit</span><span class="step-desc">Escrow</span>
+        </div>
+        <div class="step-item">
+          <div class="step-circle active" style="animation:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span class="step-label">Payment</span><span class="step-desc">Buyer sends</span>
+        </div>
+        <div class="step-item">
+          <div class="step-circle pending">4</div>
+          <span class="step-label">Confirm</span><span class="step-desc">Receipt</span>
+        </div>
+        <div class="step-item">
+          <div class="step-circle pending">5</div>
+          <span class="step-label">Complete</span><span class="step-desc">Released</span>
+        </div>
+      </div>
+
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px;">Payment window: <span style="font-family:var(--font-mono);font-weight:600;color:var(--gray-700);">10 seconds</span></p>
+
+      <!-- Order summary -->
+      <div class="detail-card">
+        <div class="detail-row"><span class="dlabel">Seller</span><span class="dvalue mono">walle1...a3b4</span></div>
+        <div style="font-size:12px;color:var(--cyan-700);background:var(--cyan-50);border-radius:8px;padding:8px 12px;margin:8px 0;">⭐ 12 completed trades | 100% completion rate</div>
+        <div class="detail-row"><span class="dlabel">Buyer</span><span class="dvalue mono">—</span></div>
+        <div style="border-top:1px solid var(--gray-100);margin-top:12px;padding-top:12px;">
+          <div class="detail-row"><span class="dlabel">Amount</span><span class="dvalue primary">100 USDC</span></div>
+          <div class="detail-row"><span class="dlabel">Rate</span><span class="dvalue">950 ARS per USDC</span></div>
+          <div class="detail-row"><span class="dlabel">Total</span><span class="dvalue primary">95,000 ARS</span></div>
+          <div class="detail-row"><span class="dlabel">Payment</span><span class="dvalue">Bank Transfer</span></div>
+        </div>
+      </div>
+
+      <!-- Payment details -->
+      <div class="detail-card">
+        <p style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--gray-800);margin-bottom:12px;">Payment Details</p>
+        <div class="bank-row"><div><p class="br-label">Bank</p><p class="br-val">Banco Galicia</p></div><button class="copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button></div>
+        <div class="bank-row"><div><p class="br-label">CBU</p><p class="br-val">01234567890123</p></div><button class="copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button></div>
+        <div class="bank-row"><div><p class="br-label">Name</p><p class="br-val">Juan Pérez</p></div><button class="copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button></div>
+      </div>
+
+      <button class="btn-gradient" style="margin-top:8px;">Mark as Paid</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- row 1 -->
+
+<!-- ═══ ROW 2 ═══ -->
+<div class="grid" style="margin-top:48px;">
+
+<!-- ═══ 9. ORDER DETAIL (Step 0 — Setup) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">9. Order Detail <span>Setup Step</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px;">
+        <div class="status-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2.5"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+          <div><p class="sptext">In progress — Setup</p><p class="spsub">Activate Trustline</p></div>
+        </div>
+      </div>
+
+      <div class="stepper">
+        <div class="track"></div>
+        <div class="progress" style="width:0;"></div>
+        <div class="step-item"><div class="step-circle active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2.5"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></div><span class="step-label">Setup</span><span class="step-desc">Trustline</span></div>
+        <div class="step-item"><div class="step-circle pending">2</div><span class="step-label">Deposit</span><span class="step-desc">Escrow</span></div>
+        <div class="step-item"><div class="step-circle pending">3</div><span class="step-label">Payment</span><span class="step-desc">Buyer sends</span></div>
+        <div class="step-item"><div class="step-circle pending">4</div><span class="step-label">Confirm</span><span class="step-desc">Receipt</span></div>
+        <div class="step-item"><div class="step-circle pending">5</div><span class="step-label">Complete</span><span class="step-desc">Released</span></div>
+      </div>
+
+      <div class="detail-card">
+        <p style="font-size:15px;color:var(--gray-700);margin-bottom:24px;">You need to activate USDC Trustline to receive tokens.</p>
+        <button class="btn-gradient">Activate Trustline</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 10. ORDER DETAIL (Step 4 — Completed) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">10. Order Detail <span>Completed</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px;">
+        <div class="status-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12v0c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11v0c-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98v0C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>
+          <div><p class="sptext">Complete — Trade done</p><p class="spsub">Trade complete</p></div>
+        </div>
+      </div>
+
+      <div class="stepper">
+        <div class="track"></div>
+        <div class="progress" style="width:calc(100% - 40px);"></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Setup</span></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Deposit</span></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Payment</span></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Confirm</span></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Complete</span></div>
+      </div>
+
+      <div class="detail-card" style="text-align:center;padding:32px 20px;">
+        <div class="success-circle">
+          <svg viewBox="0 0 32 32"><path d="M9 16.5L14 21.5L23 11.5" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+        </div>
+        <h2 style="font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--gray-900);margin-bottom:8px;">Trade completed</h2>
+        <p style="font-size:15px;color:var(--gray-600);margin-bottom:24px;">USDC has been released. Thank you for using PeerlyPay.</p>
+
+        <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:12px;padding:20px;text-align:left;margin-bottom:24px;">
+          <p style="font-size:13px;font-weight:500;color:var(--gray-600);margin-bottom:12px;">Transaction summary</p>
+          <div class="detail-row"><span class="dlabel">Amount</span><span class="dvalue primary">100 USDC</span></div>
+          <div class="detail-row"><span class="dlabel">Total</span><span class="dvalue primary">95,000 ARS</span></div>
+          <div class="detail-row"><span class="dlabel">Payment</span><span class="dvalue">Bank Transfer</span></div>
+        </div>
+
+        <p style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:12px;">Rate your experience</p>
+        <div class="stars" style="margin-bottom:24px;">
+          <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg class="filled" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+
+        <button class="btn-gradient" style="margin-bottom:12px;">Back to Marketplace</button>
+        <button style="width:100%;height:48px;border-radius:999px;border:2px solid var(--gray-200);background:#fff;font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--gray-700);cursor:pointer;">View Receipt</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 11. ORDER DETAIL (Chat + Confirm Step) ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">11. Order Detail <span>Confirm Step</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:20px;">
+        <div class="status-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div><p class="sptext">In progress — Confirm</p><p class="spsub">Confirm receipt</p></div>
+        </div>
+      </div>
+
+      <div class="stepper">
+        <div class="track"></div>
+        <div class="progress" style="width:calc((100% - 40px) * 0.75);"></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Setup</span></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Deposit</span></div>
+        <div class="step-item"><div class="step-circle done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="step-label">Payment</span></div>
+        <div class="step-item"><div class="step-circle active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><span class="step-label">Confirm</span></div>
+        <div class="step-item"><div class="step-circle pending">5</div><span class="step-label">Complete</span></div>
+      </div>
+
+      <!-- Chat -->
+      <div class="chat-box">
+        <div class="chat-messages">
+          <div class="msg msg-system"><div class="sender">PeerlyPay</div>Trustline activated. You can now receive USDC.</div>
+          <div class="msg msg-system"><div class="sender">PeerlyPay</div>Funds deposited in escrow</div>
+          <div class="msg msg-other"><div class="sender">walle1...a3b4</div>Hello! I have the funds ready in escrow.</div>
+          <div class="msg msg-own"><div class="sender">You</div>Great! I will send the bank transfer now.</div>
+          <div class="msg msg-system"><div class="sender">PeerlyPay</div>Buyer marked payment as sent.</div>
+        </div>
+        <div class="chat-input">
+          <input type="text" placeholder="Type a message..." />
+          <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+      </div>
+
+      <button class="btn-gradient" style="margin-bottom:12px;">Confirm Payment Received</button>
+      <button style="width:100%;height:48px;border-radius:999px;border:none;background:none;font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--gray-400);cursor:pointer;">Waiting for seller to confirm...</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 12. FILTER SHEET ═══ -->
+<div class="screen-wrapper">
+  <div class="screen-label">12. Filter Sheet <span>Bottom Sheet</span></div>
+  <div class="phone">
+    <div class="status-bar"></div>
+    <div class="phone-body" style="position:relative;padding:0;">
+      <!-- Dimmed bg -->
+      <div style="padding:16px;opacity:.15;">
+        <div style="background:var(--gray-100);border-radius:12px;height:80px;margin-bottom:12px;"></div>
+        <div style="background:var(--gray-100);border-radius:12px;height:80px;margin-bottom:12px;"></div>
+        <div style="background:var(--gray-100);border-radius:12px;height:80px;"></div>
+      </div>
+      <!-- Overlay background dim -->
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.3);border-radius:40px;"></div>
+
+      <div class="sheet-overlay">
+        <div style="width:40px;height:4px;border-radius:2px;background:var(--gray-300);margin:0 auto 16px;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:700;">Filters</h3>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-size:14px;font-weight:500;color:var(--fuchsia-500);cursor:pointer;">Clear all</span>
+            <button style="width:32px;height:32px;border-radius:50%;border:none;background:none;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray-500)" stroke-width="2" style="width:16px;height:16px;"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-section">
+          <h3>Status</h3>
+          <div class="filter-check"><div class="checkbox checked"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="flabel">Active</span></div>
+          <div class="filter-check"><div class="checkbox"></div><span class="flabel">Completed</span></div>
+          <div class="filter-check"><div class="checkbox"></div><span class="flabel">Disputed</span></div>
+        </div>
+
+        <div class="filter-section">
+          <h3>Type</h3>
+          <div class="filter-check"><div class="checkbox"></div><span class="flabel">Buy orders</span></div>
+          <div class="filter-check"><div class="checkbox checked"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="flabel">Sell orders</span></div>
+        </div>
+
+        <div class="filter-section">
+          <h3>Date Range</h3>
+          <div class="filter-check"><div class="checkbox checked"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="flabel">Last 7 days</span></div>
+          <div class="filter-check"><div class="checkbox"></div><span class="flabel">Last 30 days</span></div>
+          <div class="filter-check"><div class="checkbox"></div><span class="flabel">All time</span></div>
+        </div>
+
+        <p style="text-align:center;font-size:12px;color:var(--gray-400);margin-bottom:12px;">Showing 2 trades</p>
+        <button class="btn-primary-sm">Apply Filters</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- row 2 -->
+
+</body>
+</html>

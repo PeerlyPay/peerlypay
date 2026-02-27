@@ -1,7 +1,6 @@
 import { StellarWallet } from '@crossmint/client-sdk-react-ui';
 
 const DEFAULT_P2P_CONTRACT_ID = 'CA6I2J5MTYR525JMGMPRXAFNDBNWPRNB6GFWIW2S5VR6JD6QILJ53Q2V';
-
 type CrossmintWalletLike = unknown;
 
 function resolveContractId(): string {
@@ -16,12 +15,19 @@ function normalizeOrderId(orderId: string | number | bigint): string {
   return String(orderId).trim();
 }
 
+const TOKEN_SCALE = 10_000_000;
+
+function usdcToContractAmount(value: number): string {
+  return BigInt(Math.round(value * TOKEN_SCALE)).toString();
+}
+
 export async function takeOrderWithCrossmint(params: {
   wallet: CrossmintWalletLike | null | undefined;
   caller: string;
   orderId: string | number | bigint;
+  fillAmount: number;
 }) {
-  const { wallet, caller, orderId } = params;
+  const { wallet, caller, orderId, fillAmount } = params;
 
   if (!wallet) {
     throw new Error('Wallet is not connected');
@@ -30,10 +36,11 @@ export async function takeOrderWithCrossmint(params: {
   const stellarWallet = StellarWallet.from(wallet as never);
   return stellarWallet.sendTransaction({
     contractId: resolveContractId(),
-    method: 'take_order',
+    method: 'take_order_with_amount',
     args: {
       caller,
       order_id: normalizeOrderId(orderId),
+      fill_amount: usdcToContractAmount(fillAmount),
     },
   });
 }

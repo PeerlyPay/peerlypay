@@ -14,7 +14,9 @@
       "mcp__figma__get_design_context",
       "mcp__figma__whoami",
       "Bash(wc:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(open:*)",
+      "Bash(node -e:*)"
     ]
   }
 }

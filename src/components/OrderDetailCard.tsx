@@ -23,7 +23,10 @@ function formatAmount(value: number, decimals = 2): string {
 }
 
 export default function OrderDetailCard({ order }: OrderDetailCardProps) {
-  const total = order.amount * order.rate;
+  const totalAmount = order.totalAmount ?? order.amount;
+  const remainingAmount = order.remainingAmount ?? order.amount;
+  const filledAmount = order.filledAmount ?? 0;
+  const total = remainingAmount * order.rate;
   const currencyLabel = order.fiatCurrencyLabel;
 
   return (
@@ -56,11 +59,19 @@ export default function OrderDetailCard({ order }: OrderDetailCardProps) {
 
       {/* Details grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Amount */}
+        {/* Remaining */}
         <div>
-          <p className="text-sm text-gray-600 mb-1">Amount</p>
+          <p className="text-sm text-gray-600 mb-1">Available</p>
           <p className="font-mono text-2xl font-bold text-primary-600 tabular-nums">
-            {formatAmount(order.amount)} USDC
+            {formatAmount(remainingAmount)} USDC
+          </p>
+        </div>
+
+        {/* Total */}
+        <div>
+          <p className="text-sm text-gray-600 mb-1">Total order</p>
+          <p className="text-mono-amount-sm text-dark-500">
+            {formatAmount(totalAmount)} USDC
           </p>
         </div>
 
@@ -72,9 +83,17 @@ export default function OrderDetailCard({ order }: OrderDetailCardProps) {
           </p>
         </div>
 
-        {/* Total */}
+        {/* Filled */}
         <div>
-          <p className="text-sm text-gray-600 mb-1">Total</p>
+          <p className="text-sm text-gray-600 mb-1">Filled</p>
+          <p className="text-mono-amount font-semibold text-dark-500">
+            {formatAmount(filledAmount)} USDC
+          </p>
+        </div>
+
+        {/* Fiat total for this fill */}
+        <div>
+          <p className="text-sm text-gray-600 mb-1">Fiat total</p>
           <p className="text-mono-amount font-semibold text-dark-500">
             {formatAmount(total)} {currencyLabel}
           </p>

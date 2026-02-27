@@ -110,8 +110,9 @@ function EnableUsdcContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const amount = searchParams.get('amount') || '0';
-  const requestedAmount = searchParams.get('requestedAmount') || amount;
+  const flowId = searchParams.get('flowId') || '';
+  const fillUsdc = searchParams.get('fillUsdc') || searchParams.get('amount') || '0';
+  const intentUsdc = searchParams.get('intentUsdc') || searchParams.get('requestedAmount') || fillUsdc;
   const mode = searchParams.get('mode') || 'buy';
   const orderId = searchParams.get('orderId') || '';
   const [isEnabling, setIsEnabling] = useState(false);
@@ -124,8 +125,8 @@ function EnableUsdcContent() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Navigate to payment
-    router.push(`/trade/payment?amount=${amount}&requestedAmount=${requestedAmount}&mode=${mode}&orderId=${orderId}`);
-  }, [amount, mode, orderId, requestedAmount, router]);
+    router.push(`/trade/payment?flowId=${encodeURIComponent(flowId)}&fillUsdc=${fillUsdc}&intentUsdc=${intentUsdc}&mode=${mode}&orderId=${orderId}`);
+  }, [fillUsdc, flowId, intentUsdc, mode, orderId, router]);
 
   const handleCancel = useCallback(() => {
     setShowCancel(false);

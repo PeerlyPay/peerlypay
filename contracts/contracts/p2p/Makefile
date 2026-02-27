@@ -31,6 +31,7 @@ DURATION_SECS ?=604800
 ORDER_ID ?=
 FILLER ?=
 CALLER ?=
+FILL_AMOUNT ?=
 FIAT_TRANSFER_CONFIRMED ?=true
 
 ADMIN_ALIAS ?= admin
@@ -202,6 +203,7 @@ p2p-get-order: check-stellar
 
 p2p-take-order: check-stellar
 	$(call require_var,FILLER)
+	$(call require_var,FILL_AMOUNT)
 	@CONTRACT_ID="$${P2P_CONTRACT_ID:-$(P2P_ALIAS)}"; \
 	if [[ -z "$$CONTRACT_ID" && -f "$(P2P_CONTRACT_ID_FILE)" ]]; then \
 		CONTRACT_ID="$$(cat "$(P2P_CONTRACT_ID_FILE)")"; \
@@ -214,7 +216,7 @@ p2p-take-order: check-stellar
 		echo "Missing P2P_CONTRACT_ID or ORDER_ID"; \
 		exit 1; \
 	fi; \
-	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- take_order --caller "$(FILLER)" --order_id "$$ORDER"
+	$(STELLAR) contract invoke --network "$(NETWORK)" --source "$(SOURCE)" --id "$$CONTRACT_ID" -- take_order_with_amount --caller "$(FILLER)" --order_id "$$ORDER" --fill_amount "$(FILL_AMOUNT)"
 
 p2p-submit-fiat-payment: check-stellar
 	$(call require_var,CALLER)
