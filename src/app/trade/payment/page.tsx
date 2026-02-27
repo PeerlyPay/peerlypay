@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import TradeChatDrawer from '@/components/trade/TradeChatDrawer';
 import { submitFiatPaymentWithCrossmint } from '@/lib/p2p-crossmint';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -584,6 +585,13 @@ function PaymentContent() {
           <X className="size-4" />
           Cancel trade
         </button>
+        <TradeChatDrawer
+          triggerLabel="Message seller"
+          sellerLabel={makerName}
+          flowId={flowId}
+          enableVendorRequest={mode === 'sell'}
+          triggerClassName="w-full flex items-center justify-center gap-2 text-body-sm font-medium text-fuchsia-600 hover:text-fuchsia-700 transition-colors"
+        />
       </div>
     </div>
   );

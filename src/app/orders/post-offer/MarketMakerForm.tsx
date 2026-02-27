@@ -1,81 +1,72 @@
-'use client';
+"use client";
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { ArrowLeft, Info, Lock, Loader2 } from 'lucide-react';
-import { useStore } from '@/lib/store';
-import { FiatCurrencyCode, PaymentMethodCode } from '@/types';
-import { paymentMethodLabel } from '@/lib/order-mapper';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { ArrowLeft, Info, Loader2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import OfferPreviewCard from './OfferPreviewCard';
-
-// ─── Static data ────────────────────────────────────────────────────────────
+} from "@/components/ui/select";
+import { useStore } from "@/lib/store";
+import { FiatCurrencyCode, PaymentMethodCode } from "@/types";
 
 const LATAM_CURRENCIES = [
-  { code: FiatCurrencyCode.Ars, label: 'ARS', country: 'Argentina', marketRate: 950   },
-  { code: FiatCurrencyCode.Cop, label: 'COP', country: 'Colombia',  marketRate: 4150  },
-  { code: FiatCurrencyCode.Ves, label: 'VES', country: 'Venezuela', marketRate: 36    },
-  { code: FiatCurrencyCode.Brl, label: 'BRL', country: 'Brazil',    marketRate: 5.05  },
-  { code: FiatCurrencyCode.Mxn, label: 'MXN', country: 'Mexico',    marketRate: 17.2  },
-  { code: FiatCurrencyCode.Clp, label: 'CLP', country: 'Chile',     marketRate: 940   },
-  { code: FiatCurrencyCode.Pen, label: 'PEN', country: 'Peru',      marketRate: 3.75  },
+  { code: FiatCurrencyCode.Ars, label: "ARS", marketRate: 1400 },
+  { code: FiatCurrencyCode.Cop, label: "COP", marketRate: 4150 },
+  { code: FiatCurrencyCode.Ves, label: "VES", marketRate: 36 },
+  { code: FiatCurrencyCode.Brl, label: "BRL", marketRate: 5.05 },
+  { code: FiatCurrencyCode.Mxn, label: "MXN", marketRate: 17.2 },
+  { code: FiatCurrencyCode.Clp, label: "CLP", marketRate: 940 },
+  { code: FiatCurrencyCode.Pen, label: "PEN", marketRate: 3.75 },
 ] as const;
 
 const TRANSFER_METHODS = [
-  { code: PaymentMethodCode.BankTransfer, label: 'Bank Transfer' },
-  { code: PaymentMethodCode.MercadoPago,  label: 'Mercado Pago' },
-  { code: PaymentMethodCode.Nequi,        label: 'Nequi' },
-  { code: PaymentMethodCode.PagoMovil,    label: 'Pago Móvil' },
-  { code: PaymentMethodCode.Zelle,        label: 'Zelle' },
-  { code: PaymentMethodCode.Wise,         label: 'Wise' },
-  { code: PaymentMethodCode.Cash,         label: 'Cash' },
+  { code: PaymentMethodCode.BankTransfer, label: "Bank Transfer" },
+  { code: PaymentMethodCode.MercadoPago, label: "Mercado Pago" },
+  { code: PaymentMethodCode.Nequi, label: "Nequi" },
+  { code: PaymentMethodCode.PagoMovil, label: "Pago Movil" },
+  { code: PaymentMethodCode.Zelle, label: "Zelle" },
+  { code: PaymentMethodCode.Wise, label: "Wise" },
+  { code: PaymentMethodCode.Cash, label: "Cash" },
 ] as const;
 
-// ─── Form state ──────────────────────────────────────────────────────────────
-
-interface OfferForm {
+type OfferForm = {
   currencyCode: number;
-  country: string;
-  paymentMethodCodes: number[];
+  paymentMethodCode: number;
   rate: string;
   fiatAmount: string;
   minTrade: string;
   maxTrade: string;
-}
+};
 
 const initialForm: OfferForm = {
   currencyCode: FiatCurrencyCode.Ars,
-  country: 'Argentina',
-  paymentMethodCodes: [],
-  rate: '',
-  fiatAmount: '',
-  minTrade: '',
-  maxTrade: '',
+  paymentMethodCode: PaymentMethodCode.BankTransfer,
+  rate: "",
+  fiatAmount: "",
+  minTrade: "",
+  maxTrade: "",
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function parseNum(v: string): number {
-  const n = parseFloat(v.replace(/,/g, '.'));
-  return isNaN(n) ? 0 : n;
+function parseNum(value: string): number {
+  const parsed = parseFloat(value.replace(/,/g, "."));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function getCurrencyMeta(code: number) {
-  return LATAM_CURRENCIES.find((c) => c.code === code) ?? LATAM_CURRENCIES[0];
+  return (
+    LATAM_CURRENCIES.find((currency) => currency.code === code) ??
+    LATAM_CURRENCIES[0]
+  );
 }
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MarketMakerForm() {
   const router = useRouter();
@@ -83,349 +74,339 @@ export default function MarketMakerForm() {
 
   const [form, setForm] = useState<OfferForm>(initialForm);
   const [isLoading, setIsLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [hasLimits, setHasLimits] = useState(false);
 
   const isWalletReady = user.isConnected && Boolean(user.walletAddress);
   const currencyMeta = getCurrencyMeta(form.currencyCode);
 
-  // Derived numeric values
-  const rate       = parseNum(form.rate);
+  const rate = parseNum(form.rate);
   const fiatAmount = parseNum(form.fiatAmount);
-  const minTrade   = parseNum(form.minTrade);
-  const maxTrade   = parseNum(form.maxTrade);
+  const minTrade = parseNum(form.minTrade);
+  const maxTrade = parseNum(form.maxTrade);
   const usdcEscrow = rate > 0 && fiatAmount > 0 ? fiatAmount / rate : 0;
-
-  // Payment method labels for preview
-  const selectedMethodLabels = useMemo(
-    () => form.paymentMethodCodes.map((c) => paymentMethodLabel(c)),
-    [form.paymentMethodCodes],
-  );
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
-
-  const handleCurrencyChange = (value: string) => {
-    const code = Number(value);
-    const meta = getCurrencyMeta(code);
-    setForm((prev) => ({ ...prev, currencyCode: code, country: meta.country }));
-  };
-
-  const toggleMethod = (code: number) => {
-    setForm((prev) => ({
-      ...prev,
-      paymentMethodCodes: prev.paymentMethodCodes.includes(code)
-        ? prev.paymentMethodCodes.filter((c) => c !== code)
-        : [...prev.paymentMethodCodes, code],
-    }));
-  };
 
   const useMarketRate = () => {
     setForm((prev) => ({ ...prev, rate: String(currencyMeta.marketRate) }));
-    toast.info(`Market rate applied: 1 USDC = ${currencyMeta.marketRate} ${currencyMeta.label}`);
   };
 
   const handleSubmit = async () => {
+    setSubmitError(null);
+
     if (!isWalletReady) {
-      toast.error('Connect your wallet before posting an offer.');
+      const message = "Connect your wallet before posting an offer.";
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
-    if (form.paymentMethodCodes.length === 0) {
-      toast.error('Select at least one transfer method.');
-      return;
-    }
+
     if (rate <= 0) {
-      toast.error('Enter a valid exchange rate.');
+      const message = "Enter a valid exchange rate.";
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
+
     if (fiatAmount <= 0) {
-      toast.error('Enter the available fiat amount.');
+      const message = "Enter the fiat amount you want to receive.";
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
+
     if (usdcEscrow <= 0) {
-      toast.error('The calculated USDC amount is not valid.');
+      const message = "The USDC lock amount is invalid. Check your inputs.";
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
+
     if (minTrade > 0 && maxTrade > 0 && minTrade > maxTrade) {
-      toast.error('Minimum per trade cannot be greater than the maximum.');
+      const message = "Minimum per trade cannot be greater than maximum.";
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
+
     if (maxTrade > usdcEscrow) {
-      toast.error('Maximum per trade cannot exceed the total escrow amount.');
+      const message = "Maximum per trade cannot exceed the total offer size.";
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
+
     if (user.balance.usdc < usdcEscrow) {
-      toast.error(
-        `Insufficient balance. You need ${usdcEscrow.toFixed(2)} USDC but have ${user.balance.usdc.toFixed(2)} USDC.`,
-      );
+      const message = `Insufficient balance. You need ${usdcEscrow.toFixed(2)} USDC and have ${user.balance.usdc.toFixed(2)} USDC.`;
+      setSubmitError(message);
+      toast.error(message);
       return;
     }
 
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 600));
 
     const escrowed = subtractBalance(usdcEscrow);
     if (!escrowed) {
-      toast.error('Could not reserve balance. Please try again.');
+      const message = "Could not reserve balance. Please try again.";
+      setSubmitError(message);
+      toast.error(message);
       setIsLoading(false);
       return;
     }
 
     createOrder({
-      type: 'sell',
+      type: "sell",
       amount: usdcEscrow,
       rate,
       fiatCurrencyCode: form.currencyCode,
-      paymentMethodCode: form.paymentMethodCodes[0],
-      paymentMethodCodes: form.paymentMethodCodes,
+      paymentMethodCode: form.paymentMethodCode,
+      paymentMethodCodes: [form.paymentMethodCode],
       minTradeAmount: minTrade > 0 ? minTrade : undefined,
       maxTradeAmount: maxTrade > 0 ? maxTrade : undefined,
       durationSecs: 86400,
     });
 
-    toast.success(`Offer posted! ${usdcEscrow.toFixed(2)} USDC moved to escrow.`);
-    router.push('/orders/mine');
+    toast.success(
+      `Offer posted. ${usdcEscrow.toFixed(2)} USDC is locked in escrow.`,
+    );
+    router.push("/orders/mine");
   };
 
-  // ─── Render ────────────────────────────────────────────────────────────────
-
   return (
-    <div className="flex flex-col gap-6 pb-8">
-
-      {/* Back header */}
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="size-4" />
-        </button>
-        <div>
-          <h1 className="text-h3 font-display font-bold text-gray-900">Post Offer</h1>
-          <p className="text-body-sm text-gray-500">Sell USDC for local currency</p>
-        </div>
+    <div className="mx-auto flex w-full max-w-md flex-col pb-28">
+      <div className="pt-2">
+        <h1 className="text-h3 font-display font-bold text-gray-900">
+          Post a sell offer
+        </h1>
+        <p className="mt-1 text-body-sm text-gray-500">
+          Set your price and amount, then post.
+        </p>
       </div>
 
-      {/* ── Section 1: Currency & Country ─────────────────────────────────── */}
-      <section className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-        <h2 className="text-caption text-gray-500 uppercase tracking-wider">Currency & Location</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="mb-1.5 block text-body-sm font-semibold text-gray-700">
-              Fiat Currency
-            </Label>
-            <Select
-              value={String(form.currencyCode)}
-              onValueChange={handleCurrencyChange}
-            >
-              <SelectTrigger className="w-full rounded-xl border border-gray-200 bg-white">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                {LATAM_CURRENCIES.map((c) => (
-                  <SelectItem key={c.code} value={String(c.code)}>
-                    {c.label} — {c.country}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="mb-1.5 block text-body-sm font-semibold text-gray-700">
-              Country
-            </Label>
-            <Input
-              type="text"
-              value={form.country}
-              onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
-              className="rounded-xl border border-gray-200 bg-white"
-              placeholder="Country"
-            />
-          </div>
+      {submitError && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {submitError}
         </div>
-      </section>
+      )}
 
-      {/* ── Section 2: Transfer methods (chip multi-select) ────────────────── */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-        <h2 className="text-caption text-gray-500 uppercase tracking-wider">Transfer Methods</h2>
-        <div className="flex flex-wrap gap-2">
-          {TRANSFER_METHODS.map((m) => {
-            const selected = form.paymentMethodCodes.includes(m.code);
-            return (
-              <button
-                key={m.code}
-                type="button"
-                onClick={() => toggleMethod(m.code)}
-                className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-150',
-                  selected
-                    ? 'border-primary-500 bg-primary-500 text-white shadow-sm'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-primary-300 hover:text-primary-600',
-                )}
+      <div className="mt-5 space-y-4">
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-gray-900">
+            Offer details
+          </h2>
+
+          <div className="space-y-3">
+            <div>
+              <Label className="mb-1.5 block text-body-sm text-gray-700">
+                Currency
+              </Label>
+              <Select
+                value={String(form.currencyCode)}
+                onValueChange={(value) =>
+                  setForm((prev) => ({ ...prev, currencyCode: Number(value) }))
+                }
               >
-                {m.label}
+                <SelectTrigger className="h-12 w-full rounded-xl border border-gray-200 bg-white">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LATAM_CURRENCIES.map((currency) => (
+                    <SelectItem
+                      key={currency.code}
+                      value={String(currency.code)}
+                    >
+                      {currency.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block text-body-sm text-gray-700">
+                Payment method
+              </Label>
+              <Select
+                value={String(form.paymentMethodCode)}
+                onValueChange={(value) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    paymentMethodCode: Number(value),
+                  }))
+                }
+              >
+                <SelectTrigger className="h-12 w-full rounded-xl border border-gray-200 bg-white">
+                  <SelectValue placeholder="Select method" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRANSFER_METHODS.map((method) => (
+                    <SelectItem key={method.code} value={String(method.code)}>
+                      {method.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label className="mb-1.5 block text-body-sm text-gray-700">
+                Rate (1 USDC =)
+              </Label>
+              <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3">
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={form.rate}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, rate: event.target.value }))
+                  }
+                  placeholder={`e.g. ${currencyMeta.marketRate}`}
+                  className="h-12 border-none bg-transparent px-0 font-mono shadow-none focus-visible:ring-0"
+                />
+                <span className="shrink-0 text-sm font-semibold text-gray-700">
+                  {currencyMeta.label}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={useMarketRate}
+                className="mt-2 inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700"
+              >
+                <Info className="size-3.5" />
+                Use market rate
               </button>
-            );
-          })}
-        </div>
-        {form.paymentMethodCodes.length === 0 && (
-          <p className="text-xs text-gray-400">Select one or more methods.</p>
-        )}
-      </section>
+            </div>
+          </div>
+        </section>
 
-      {/* ── Section 3: Exchange rate ───────────────────────────────────────── */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-        <h2 className="text-caption text-gray-500 uppercase tracking-wider">Exchange Rate</h2>
-
-        <div>
-          <Label className="mb-1.5 block text-body-sm font-semibold text-gray-700">
-            1 USDC =
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-gray-900">Amount</h2>
+          <Label className="mb-1.5 block text-body-sm text-gray-700">
+            Fiat amount to receive
           </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={form.rate}
-              onChange={(e) => setForm((p) => ({ ...p, rate: e.target.value }))}
-              placeholder={`e.g. ${currencyMeta.marketRate}`}
-              className="flex-1 rounded-xl border border-gray-200 bg-white font-mono text-lg"
-            />
-            <span className="shrink-0 text-base font-bold text-gray-700">
+          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3">
+            <span className="shrink-0 text-sm font-semibold text-gray-500">
               {currencyMeta.label}
             </span>
-          </div>
-        </div>
-
-        {/* Market rate helper */}
-        <button
-          type="button"
-          onClick={useMarketRate}
-          className="flex items-center gap-1.5 self-start rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 transition-colors"
-        >
-          <Info className="size-3.5" />
-          Use market rate: 1 USDC ≈ {currencyMeta.marketRate.toLocaleString('en-US')} {currencyMeta.label}
-        </button>
-      </section>
-
-      {/* ── Section 4: Capacity ───────────────────────────────────────────── */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-        <h2 className="text-caption text-gray-500 uppercase tracking-wider">Offer Capacity</h2>
-
-        <div>
-          <Label className="mb-1.5 block text-body-sm font-semibold text-gray-700">
-            Available fiat amount (max. you can receive)
-          </Label>
-          <div className="flex items-center gap-2">
-            <span className="shrink-0 text-sm font-bold text-gray-500">{currencyMeta.label}</span>
             <Input
               type="number"
               min={0}
               step="any"
               value={form.fiatAmount}
-              onChange={(e) => setForm((p) => ({ ...p, fiatAmount: e.target.value }))}
-              placeholder={`e.g. ${currencyMeta.code === FiatCurrencyCode.Ars ? '500000' : '1000'}`}
-              className="flex-1 rounded-xl border border-gray-200 bg-white font-mono"
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, fiatAmount: event.target.value }))
+              }
+              placeholder="e.g. 500000"
+              className="h-12 border-none bg-transparent px-0 font-mono shadow-none focus-visible:ring-0"
             />
           </div>
-        </div>
-
-        {/* Computed USDC escrow */}
-        {usdcEscrow > 0 && (
-          <div className="flex items-center gap-2 rounded-xl border border-lime-200 bg-lime-50 px-3 py-2.5">
-            <Lock className="size-4 shrink-0 text-lime-600" />
-            <div>
-              <p className="text-xs font-semibold text-lime-700">USDC to lock in escrow</p>
-              <p className="font-mono text-base font-bold text-lime-800">
-                {usdcEscrow.toLocaleString('en-US', { maximumFractionDigits: 4 })} USDC
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Balance warning */}
-        {usdcEscrow > 0 && usdcEscrow > user.balance.usdc && (
-          <p className="text-xs text-red-500">
-            Insufficient balance. You have {user.balance.usdc.toFixed(2)} USDC available.
+          <p className="mt-2 text-sm text-gray-600">
+            You will lock{" "}
+            <strong className="text-gray-900">
+              {usdcEscrow.toFixed(2)} USDC
+            </strong>
           </p>
-        )}
-      </section>
+          <p className="text-xs text-gray-500">
+            Balance: {user.balance.usdc.toFixed(2)} USDC
+          </p>
+        </section>
 
-      {/* ── Section 5: Per-trade limits ───────────────────────────────────── */}
-      <section className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-        <h2 className="text-caption text-gray-500 uppercase tracking-wider">Limits per Trade</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="mb-1.5 block text-body-sm font-semibold text-gray-700">
-              Minimum (USDC)
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={form.minTrade}
-              onChange={(e) => setForm((p) => ({ ...p, minTrade: e.target.value }))}
-              placeholder="e.g. 10"
-              className="rounded-xl border border-gray-200 bg-white font-mono"
-            />
+        <section>
+          <h2 className="mb-2 text-sm font-semibold text-gray-900">
+            Publishing
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="h-11 rounded-xl border border-primary-500 bg-primary-50 text-sm font-semibold text-primary-700"
+            >
+              Post now
+            </button>
+            <button
+              type="button"
+              onClick={() => setHasLimits((prev) => !prev)}
+              className="h-11 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-600"
+            >
+              {hasLimits ? "Limits on" : "Set limits"}
+            </button>
           </div>
-          <div>
-            <Label className="mb-1.5 block text-body-sm font-semibold text-gray-700">
-              Maximum (USDC)
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              step="any"
-              value={form.maxTrade}
-              onChange={(e) => setForm((p) => ({ ...p, maxTrade: e.target.value }))}
-              placeholder="e.g. 200"
-              className="rounded-xl border border-gray-200 bg-white font-mono"
-            />
-          </div>
+
+          {hasLimits && (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <Label className="mb-1.5 block text-xs text-gray-600">
+                  Min USDC
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={form.minTrade}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      minTrade: event.target.value,
+                    }))
+                  }
+                  placeholder="10"
+                  className="h-11 rounded-xl border border-gray-200 bg-white font-mono"
+                />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs text-gray-600">
+                  Max USDC
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  value={form.maxTrade}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      maxTrade: event.target.value,
+                    }))
+                  }
+                  placeholder="200"
+                  className="h-11 rounded-xl border border-gray-200 bg-white font-mono"
+                />
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 border-t border-gray-200 bg-white px-4 pb-4 pt-3">
+        <div className="mx-auto flex w-full max-w-md items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isLoading || !isWalletReady}
+            className="h-11 flex-1 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-sm font-bold text-white transition-all hover:opacity-90 disabled:opacity-70"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Posting offer...
+              </>
+            ) : isWalletReady ? (
+              "Post Offer"
+            ) : (
+              "Connect wallet"
+            )}
+          </Button>
         </div>
-        {minTrade > 0 && maxTrade > 0 && minTrade > maxTrade && (
-          <p className="text-xs text-red-500">Minimum cannot exceed maximum.</p>
-        )}
-      </section>
-
-      {/* ── Section 6: Live preview ───────────────────────────────────────── */}
-      <section className="flex flex-col gap-3">
-        <h2 className="text-caption text-gray-500 uppercase tracking-wider">
-          How your offer will look in the marketplace
-        </h2>
-        <OfferPreviewCard
-          currencyLabel={currencyMeta.label}
-          rate={rate}
-          usdcAmount={usdcEscrow}
-          minTrade={minTrade}
-          maxTrade={maxTrade}
-          paymentMethodLabels={selectedMethodLabels}
-          sellerAddress={user.walletAddress ?? ''}
-          reputationScore={user.reputation_score ?? 0}
-        />
-      </section>
-
-      {/* ── Submit ───────────────────────────────────────────────────────── */}
-      <Button
-        type="button"
-        onClick={handleSubmit}
-        disabled={isLoading || !isWalletReady}
-        className="w-full rounded-full bg-gradient-to-r from-primary-500 to-primary-600 py-4 text-body font-bold text-white hover:opacity-90 transition-all duration-200 disabled:opacity-70"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="size-5 animate-spin" />
-            Posting offer…
-          </>
-        ) : isWalletReady ? (
-          usdcEscrow > 0
-            ? `Post Offer · lock ${usdcEscrow.toFixed(2)} USDC`
-            : 'Post Offer'
-        ) : (
-          'Connect wallet to continue'
-        )}
-      </Button>
+      </div>
     </div>
   );
 }
