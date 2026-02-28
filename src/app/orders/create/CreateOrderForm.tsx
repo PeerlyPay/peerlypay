@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useWallet } from '@crossmint/client-sdk-react-ui';
 import { toast } from 'sonner';
 import { Minus, Plus, Loader2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
@@ -19,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { createOrderWithCrossmint } from '@/lib/p2p-crossmint';
 
 export interface FormData {
   amount: number;
@@ -98,7 +100,9 @@ function NumberField({
 
 export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
   const router = useRouter();
-  const { user, createOrder } = useStore();
+  const { wallet } = useWallet();
+  const user = useStore((state) => state.user);
+  const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [isLoading, setIsLoading] = useState(false);
   const isWalletReady = user.isConnected && Boolean(user.walletAddress);
@@ -141,10 +145,21 @@ export default function CreateOrderForm({ orderType }: CreateOrderFormProps) {
       durationSecs,
     };
 
-    createOrder(input);
-    toast.success('Order created successfully!');
-    router.push('/');
-    setIsLoading(false);
+    try {
+      await createOrderWithCrossmint({
+        wallet,
+        caller: user.walletAddress as string,
+        input,
+      });
+      await refreshOrdersFromChain();
+      toast.success('Order created on-chain successfully!');
+      router.push('/');
+    } catch (error) {
+      console.error('Failed to create order on-chain', error);
+      toast.error('Failed to create order on-chain. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

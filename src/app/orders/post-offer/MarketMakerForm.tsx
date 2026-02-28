@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useWallet } from "@crossmint/client-sdk-react-ui";
 import { toast } from "sonner";
 import { ArrowLeft, Info, Loader2 } from "lucide-react";
 
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useStore } from "@/lib/store";
+import { createOrderWithCrossmint } from "@/lib/p2p-crossmint";
 import { FiatCurrencyCode, PaymentMethodCode } from "@/types";
 
 const LATAM_CURRENCIES = [
@@ -39,6 +41,7 @@ const TRANSFER_METHODS = [
 ] as const;
 
 type OfferForm = {
+  offerSide: "crypto" | "fiat";
   currencyCode: number;
   paymentMethodCode: number;
   rate: string;
@@ -48,6 +51,7 @@ type OfferForm = {
 };
 
 const initialForm: OfferForm = {
+  offerSide: "crypto",
   currencyCode: FiatCurrencyCode.Ars,
   paymentMethodCode: PaymentMethodCode.BankTransfer,
   rate: "",
@@ -70,7 +74,9 @@ function getCurrencyMeta(code: number) {
 
 export default function MarketMakerForm() {
   const router = useRouter();
-  const { user, createOrder, subtractBalance } = useStore();
+  const { wallet } = useWallet();
+  const user = useStore((state) => state.user);
+  const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
 
   const [form, setForm] = useState<OfferForm>(initialForm);
   const [isLoading, setIsLoading] = useState(false);
@@ -85,6 +91,7 @@ export default function MarketMakerForm() {
   const minTrade = parseNum(form.minTrade);
   const maxTrade = parseNum(form.maxTrade);
   const usdcEscrow = rate > 0 && fiatAmount > 0 ? fiatAmount / rate : 0;
+  const isCryptoSide = form.offerSide === "crypto";
 
   const useMarketRate = () => {
     setForm((prev) => ({ ...prev, rate: String(currencyMeta.marketRate) }));
@@ -121,21 +128,24 @@ export default function MarketMakerForm() {
       return;
     }
 
-    if (minTrade > 0 && maxTrade > 0 && minTrade > maxTrade) {
+    const effectiveMinTrade = hasLimits ? minTrade : 0;
+    const effectiveMaxTrade = hasLimits ? maxTrade : 0;
+
+    if (effectiveMinTrade > 0 && effectiveMaxTrade > 0 && effectiveMinTrade > effectiveMaxTrade) {
       const message = "Minimum per trade cannot be greater than maximum.";
       setSubmitError(message);
       toast.error(message);
       return;
     }
 
-    if (maxTrade > usdcEscrow) {
+    if (effectiveMaxTrade > usdcEscrow) {
       const message = "Maximum per trade cannot exceed the total offer size.";
       setSubmitError(message);
       toast.error(message);
       return;
     }
 
-    if (user.balance.usdc < usdcEscrow) {
+    if (isCryptoSide && user.balance.usdc < usdcEscrow) {
       const message = `Insufficient balance. You need ${usdcEscrow.toFixed(2)} USDC and have ${user.balance.usdc.toFixed(2)} USDC.`;
       setSubmitError(message);
       toast.error(message);
@@ -145,42 +155,59 @@ export default function MarketMakerForm() {
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 600));
 
-    const escrowed = subtractBalance(usdcEscrow);
-    if (!escrowed) {
-      const message = "Could not reserve balance. Please try again.";
+    try {
+      await createOrderWithCrossmint({
+        wallet,
+        caller: user.walletAddress as string,
+        input: {
+          type: isCryptoSide ? "sell" : "buy",
+          amount: usdcEscrow,
+          rate,
+          fiatCurrencyCode: form.currencyCode,
+          paymentMethodCode: form.paymentMethodCode,
+          paymentMethodCodes: [form.paymentMethodCode],
+          minTradeAmount: effectiveMinTrade > 0 ? effectiveMinTrade : undefined,
+          maxTradeAmount: effectiveMaxTrade > 0 ? effectiveMaxTrade : undefined,
+          durationSecs: 86400,
+        },
+      });
+
+      await refreshOrdersFromChain();
+
+      const successMessage = isCryptoSide
+        ? `Offer posted on-chain. ${usdcEscrow.toFixed(2)} USDC is locked in escrow.`
+        : "Offer posted on-chain. USDC escrow will be locked when a taker accepts.";
+      toast.success(successMessage);
+      router.push("/orders");
+    } catch (error) {
+      console.error("Failed to post offer on-chain", error);
+      const message = "Failed to post offer on-chain. Please try again.";
       setSubmitError(message);
       toast.error(message);
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    createOrder({
-      type: "sell",
-      amount: usdcEscrow,
-      rate,
-      fiatCurrencyCode: form.currencyCode,
-      paymentMethodCode: form.paymentMethodCode,
-      paymentMethodCodes: [form.paymentMethodCode],
-      minTradeAmount: minTrade > 0 ? minTrade : undefined,
-      maxTradeAmount: maxTrade > 0 ? maxTrade : undefined,
-      durationSecs: 86400,
-    });
-
-    toast.success(
-      `Offer posted. ${usdcEscrow.toFixed(2)} USDC is locked in escrow.`,
-    );
-    router.push("/orders/mine");
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col pb-28">
-      <div className="pt-2">
-        <h1 className="text-h3 font-display font-bold text-gray-900">
-          Post a sell offer
-        </h1>
-        <p className="mt-1 text-body-sm text-gray-500">
-          Set your price and amount, then post.
-        </p>
+    <div className="mx-auto flex w-full max-w-md flex-col pb-8">
+      <div className="flex items-start gap-3 pt-2">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="size-4" />
+        </button>
+        <div>
+          <h1 className="text-h3 font-display font-bold text-gray-900">
+            Post an offer
+          </h1>
+          <p className="mt-1 text-body-sm text-gray-500">
+            Choose CRYPTO or FIAT, then set your price and amount.
+          </p>
+        </div>
       </div>
 
       {submitError && (
@@ -196,6 +223,41 @@ export default function MarketMakerForm() {
           </h2>
 
           <div className="space-y-3">
+            <div>
+              <Label className="mb-1.5 block text-body-sm text-gray-700">
+                Offer side
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, offerSide: "crypto" }))}
+                  className={`h-11 rounded-xl border text-sm font-semibold transition-colors ${
+                    isCryptoSide
+                      ? "border-primary-500 bg-primary-50 text-primary-700"
+                      : "border-gray-200 bg-white text-gray-600"
+                  }`}
+                >
+                  CRYPTO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, offerSide: "fiat" }))}
+                  className={`h-11 rounded-xl border text-sm font-semibold transition-colors ${
+                    !isCryptoSide
+                      ? "border-primary-500 bg-primary-50 text-primary-700"
+                      : "border-gray-200 bg-white text-gray-600"
+                  }`}
+                >
+                  FIAT
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                {isCryptoSide
+                  ? "CRYPTO: you lock USDC now and receive fiat from a buyer."
+                  : "FIAT: USDC is locked by the taker when your offer is matched."}
+              </p>
+            </div>
+
             <div>
               <Label className="mb-1.5 block text-body-sm text-gray-700">
                 Currency
@@ -302,14 +364,20 @@ export default function MarketMakerForm() {
             />
           </div>
           <p className="mt-2 text-sm text-gray-600">
-            You will lock{" "}
+            {isCryptoSide ? "You will lock " : "Offer size "}
             <strong className="text-gray-900">
               {usdcEscrow.toFixed(2)} USDC
             </strong>
           </p>
-          <p className="text-xs text-gray-500">
-            Balance: {user.balance.usdc.toFixed(2)} USDC
-          </p>
+          {isCryptoSide ? (
+            <p className="text-xs text-gray-500">
+              Balance: {user.balance.usdc.toFixed(2)} USDC
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Escrow is funded by the taker after match.
+            </p>
+          )}
         </section>
 
         <section>
@@ -377,17 +445,8 @@ export default function MarketMakerForm() {
         </section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-gray-200 bg-white px-4 pb-4 pt-3">
-        <div className="mx-auto flex w-full max-w-md items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="size-4" />
-          </button>
-
+      <div className="mt-6 border-t border-gray-200 bg-white pt-3">
+        <div className="flex w-full items-center pb-2">
           <Button
             type="button"
             onClick={handleSubmit}

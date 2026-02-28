@@ -1,14 +1,14 @@
-import type { Order, OrderType, MatchOrderResult, MatchedMaker } from "@/types";
+import type { MatchOrderResult, MatchedMaker, Order, OrderType } from "@/types";
 
 /** Platform fee percentage (0.5%) */
 const FEE_RATE = 0.005;
 const ORDER_EXPIRY_BUFFER_MS = 120_000;
-const PRICE_WEIGHT = 0.2;
-const SIZE_WEIGHT = 0.8;
 
 function isOrderAvailableForMatch(order: Order): boolean {
   const createdAtMs =
-    order.createdAt instanceof Date ? order.createdAt.getTime() : Number.NaN;
+    order.createdAt instanceof Date
+      ? order.createdAt.getTime()
+      : new Date(order.createdAt).getTime();
 
   if (!Number.isFinite(createdAtMs) || order.durationSecs <= 0) {
     return false;
@@ -18,57 +18,24 @@ function isOrderAvailableForMatch(order: Order): boolean {
   return expiresAtMs - Date.now() > ORDER_EXPIRY_BUFFER_MS;
 }
 
-/**
- * Score an order for matching quality.
- * Higher score = better match. Combines rate favorability with maker reputation.
- *
- * For BUY orders (user buying): lower rate is better → invert rate contribution
- * For SELL orders (user selling): higher rate is better → use rate directly
- */
-export function scoreOrder(order: Order, userType: OrderType): number {
-  const reputation = order.reputation_score ?? 0;
-  const completionRate = order.completionRate ?? 100;
+function orderCreatedAtMs(order: Order): number {
+  const value =
+    order.createdAt instanceof Date
+      ? order.createdAt.getTime()
+      : new Date(order.createdAt).getTime();
 
-  // Normalize reputation (0-100 scale, cap at 100)
-  const reputationScore = Math.min(reputation, 100) / 100;
-
-  // Normalize completion rate (0-1)
-  const completionScore = completionRate / 100;
-
-  // Rate score: for buyers, lower rate = better; for sellers, higher rate = better
-  // We use the rate as-is and let the sort handle direction
-  const rateWeight = 0.5;
-  const reputationWeight = 0.35;
-  const completionWeight = 0.15;
-
-  // For scoring, we normalize rate contribution relative to itself
-  // The actual sorting by rate is handled in findBestMatch
-  const compositeScore =
-    reputationScore * reputationWeight + completionScore * completionWeight;
-
-  return compositeScore;
+  return Number.isFinite(value) ? value : 0;
 }
 
-/**
- * Find the best matching order for a given trade request.
- *
- * Algorithm:
- * 1. Filter orders of opposite type (if user buys, find sellers)
- * 2. Filter open orders with enough remaining liquidity for requested amount
- * 3. Exclude orders from the requesting user
- * 4. Sort by best rate, then by reputation score
- * 5. Return the top match with fee calculation
- */
-export function findBestMatch(
+function getMatchCandidates(
   orders: Order[],
   amount: number,
   userType: OrderType,
-  userId: string,
-): MatchOrderResult | null {
-  // Opposite type: if user wants to BUY, find SELL orders
+  userId?: string,
+): Order[] {
   const oppositeType: OrderType = userType === "buy" ? "sell" : "buy";
 
-  const candidates = orders.filter((order) => {
+  return orders.filter((order) => {
     const availableAmount = order.remainingAmount ?? order.amount;
 
     if (order.type !== oppositeType) return false;
@@ -76,42 +43,41 @@ export function findBestMatch(
     if (!isOrderAvailableForMatch(order)) return false;
     if (availableAmount < amount) return false;
     if ((order.activeFillAmount ?? 0) > 0) return false;
-    if (order.createdBy === userId) return false;
+    if (userId && order.createdBy === userId) return false;
+
     return true;
   });
+}
 
+function sortByBestRateThenNewest(candidates: Order[], userType: OrderType): Order[] {
+  return [...candidates].sort((a, b) => {
+    if (a.rate !== b.rate) {
+      return userType === "buy" ? a.rate - b.rate : b.rate - a.rate;
+    }
+
+    return orderCreatedAtMs(b) - orderCreatedAtMs(a);
+  });
+}
+
+/**
+ * Find the best matching order for a given trade request.
+ *
+ * Rules:
+ * 1. Must be opposite side and open for fills.
+ * 2. Must cover the full requested amount.
+ * 3. Best rate wins.
+ * 4. If rate ties, newest order wins.
+ */
+export function findBestMatch(
+  orders: Order[],
+  amount: number,
+  userType: OrderType,
+  userId: string,
+): MatchOrderResult | null {
+  const candidates = getMatchCandidates(orders, amount, userType, userId);
   if (candidates.length === 0) return null;
 
-  const rates = candidates.map((order) => order.rate);
-  const minRate = Math.min(...rates);
-  const maxRate = Math.max(...rates);
-  const rateSpan = maxRate - minRate;
-
-  const rank = (order: Order) => {
-    const priceScore =
-      rateSpan === 0
-        ? 1
-        : userType === "buy"
-          ? (maxRate - order.rate) / rateSpan
-          : (order.rate - minRate) / rateSpan;
-
-    const availableAmount = order.remainingAmount ?? order.amount;
-    const sizeScore = Math.max(0, Math.min(1, availableAmount / amount));
-
-    return PRICE_WEIGHT * priceScore + SIZE_WEIGHT * sizeScore;
-  };
-
-  // Sort by weighted score, then reputation as tie-breaker.
-  candidates.sort((a, b) => {
-    const scoreDiff = rank(b) - rank(a);
-
-    if (scoreDiff !== 0) return scoreDiff;
-
-    // Tiebreak: higher reputation wins
-    return (b.reputation_score ?? 0) - (a.reputation_score ?? 0);
-  });
-
-  const best = candidates[0];
+  const [best] = sortByBestRateThenNewest(candidates, userType);
   const fee = amount * best.rate * FEE_RATE;
   const fiatAmount = amount * best.rate;
 
@@ -136,63 +102,22 @@ export function findBestMatch(
 }
 
 /**
- * Calculate a real-time estimate without matching to a specific order.
- * Uses the best available rate from the order book.
+ * Calculate a real-time estimate using the same matching criteria as findBestMatch.
  */
-export function estimateQuickTrade(
-  orders: Order[],
-  amount: number,
-  userType: OrderType,
-) {
-  const oppositeType: OrderType = userType === "buy" ? "sell" : "buy";
+export function estimateQuickTrade(orders: Order[], amount: number, userType: OrderType) {
+  const candidates = getMatchCandidates(orders, amount, userType);
+  if (candidates.length === 0) return null;
 
-  const available = orders.filter(
-    (o) => {
-      const availableAmount = o.remainingAmount ?? o.amount;
-
-      return (
-        o.type === oppositeType &&
-        o.status === "AwaitingFiller" &&
-        availableAmount >= amount &&
-        (o.activeFillAmount ?? 0) === 0 &&
-        isOrderAvailableForMatch(o)
-      );
-    },
-  );
-
-  if (available.length === 0) return null;
-
-  const rates = available.map((order) => order.rate);
-  const minRate = Math.min(...rates);
-  const maxRate = Math.max(...rates);
-  const rateSpan = maxRate - minRate;
-
-  const rank = (order: Order) => {
-    const priceScore =
-      rateSpan === 0
-        ? 1
-        : userType === "buy"
-          ? (maxRate - order.rate) / rateSpan
-          : (order.rate - minRate) / rateSpan;
-
-    const availableAmount = order.remainingAmount ?? order.amount;
-    const sizeScore = Math.max(0, Math.min(1, availableAmount / amount));
-
-    return PRICE_WEIGHT * priceScore + SIZE_WEIGHT * sizeScore;
-  };
-
-  available.sort((a, b) => rank(b) - rank(a));
-
-  const bestRate = available[0].rate;
-  const fiatAmount = amount * bestRate;
+  const [best] = sortByBestRateThenNewest(candidates, userType);
+  const fiatAmount = amount * best.rate;
   const fee = fiatAmount * FEE_RATE;
 
   return {
     amount,
-    rate: bestRate,
+    rate: best.rate,
     fiatAmount,
     fee,
     total: userType === "buy" ? fiatAmount + fee : fiatAmount - fee,
-    fiatCurrencyCode: available[0].fiatCurrencyCode,
+    fiatCurrencyCode: best.fiatCurrencyCode,
   };
 }
