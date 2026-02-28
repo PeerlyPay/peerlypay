@@ -1,5 +1,7 @@
 'use client';
 
+import { Clock, BadgeCheck } from 'lucide-react';
+
 export interface OfferPreviewCardProps {
   currencyLabel: string;
   rate: number;
@@ -20,6 +22,8 @@ function getInitial(address: string): string {
   return (address.replace(/^0x/i, '').slice(0, 1) || '?').toUpperCase();
 }
 
+const MAX_BADGES = 3;
+
 export default function OfferPreviewCard({
   currencyLabel,
   rate,
@@ -30,84 +34,125 @@ export default function OfferPreviewCard({
   sellerAddress,
   reputationScore,
 }: OfferPreviewCardProps) {
-  const methodsText =
-    paymentMethodLabels.length > 0
-      ? paymentMethodLabels.join(' · ')
-      : 'No method selected';
-
   const hasRate = rate > 0;
   const hasAmount = usdcAmount > 0;
 
+  // Limits line: fiat range if both sides set, otherwise USDC total
+  const limitsText = (() => {
+    if (minTrade > 0 && maxTrade > 0 && hasRate) {
+      return `Limits: ${(minTrade * rate).toLocaleString('en-US')} – ${(maxTrade * rate).toLocaleString('en-US')} ${currencyLabel}`;
+    }
+    if (hasAmount) {
+      return `Available: ${usdcAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC`;
+    }
+    return `Available: — USDC`;
+  })();
+
+  const visibleMethods = paymentMethodLabels.slice(0, MAX_BADGES);
+  const overflow = paymentMethodLabels.length - MAX_BADGES;
+
   return (
-    <div className="relative rounded-xl border border-primary-200 bg-white p-4 shadow-sm ring-2 ring-primary-100">
+    <div className="relative rounded-[6px] border border-primary-200 bg-white px-6 py-4 shadow-[0px_4px_4px_0px_rgba(174,174,174,0.25)] ring-2 ring-primary-100">
       {/* Preview badge */}
       <span className="absolute right-3 top-3 rounded-full bg-primary-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary-600">
         Preview
       </span>
 
-      {/* Row 1: Avatar + username + online */}
+      {/* ── Row 1: User information ──────────────────────────────────────── */}
       <div className="flex items-center gap-3">
+        {/* Avatar + online dot */}
         <div className="relative shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-sm font-display font-bold text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 font-display text-sm font-bold text-white">
             {getInitial(sellerAddress)}
           </div>
           <span
-            className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-white bg-green-500"
+            className="absolute bottom-0 right-0 h-[7px] w-[7px] rounded-full border-[1.5px] border-white bg-green-500"
             aria-hidden
           />
         </div>
-        <span className="text-base font-semibold text-gray-900 truncate pr-16">
-          {shortenAddress(sellerAddress)}
-        </span>
+
+        {/* Name + stats */}
+        <div className="flex min-w-0 flex-col gap-0.5 pr-16">
+          {/* Name row */}
+          <div className="flex items-center gap-1">
+            <span className="font-display text-[18px] font-semibold leading-[1.5] text-black truncate">
+              {shortenAddress(sellerAddress)}
+            </span>
+            <BadgeCheck className="size-4 shrink-0 text-primary-500" strokeWidth={2} />
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-1.5">
+            <span className="font-body text-[10px] font-semibold uppercase tracking-[0.5px] text-neutral-700">
+              {reputationScore} Orders (100.00%)
+            </span>
+            <span className="h-3 w-px bg-gray-300" aria-hidden />
+            <Clock className="size-3 shrink-0 text-neutral-700" strokeWidth={2} />
+            <span className="font-body text-[10px] font-semibold uppercase tracking-[0.5px] text-neutral-700">
+              24 h
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Row 2: Reputation | Payment window */}
-      <div className="mt-2 flex items-center gap-2 text-sm text-gray-500">
-        <span className="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-1 text-xs font-semibold text-cyan-700">
-          ⭐ {reputationScore === 0 ? 'New trader' : `${reputationScore} trades`}
-        </span>
-        <span aria-hidden>|</span>
-        <span>Payment window: 24 h</span>
-      </div>
-
-      {/* Row 3: Exchange rate - prominent */}
-      <p className="mt-2 text-3xl font-display font-bold text-gray-900">
-        {hasRate
-          ? `1 USDC = ${rate.toLocaleString('en-US')} ${currencyLabel}`
-          : <span className="text-gray-300">1 USDC = — {currencyLabel}</span>}
-      </p>
-
-      {/* Row 4: Available */}
-      <p className="mt-1 text-sm text-gray-600">
-        {hasAmount ? (
-          <>Available: <span className="font-semibold">{usdcAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC</span></>
-        ) : (
-          <span className="text-gray-300">Available: — USDC</span>
-        )}
-      </p>
-
-      {/* Row 4b: Limits */}
-      {(minTrade > 0 || maxTrade > 0) && (
-        <p className="mt-0.5 text-xs text-gray-500">
-          Limit per trade:{' '}
-          <span className="font-medium">
-            {minTrade > 0 ? `${minTrade.toLocaleString('en-US')} USDC` : '—'}
-            {' – '}
-            {maxTrade > 0 ? `${maxTrade.toLocaleString('en-US')} USDC` : '—'}
-          </span>
-        </p>
-      )}
-
-      {/* Row 5: Payment methods + button */}
+      {/* ── Row 2: Pricing + CTA ────────────────────────────────────────── */}
       <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-sm text-gray-700 truncate min-w-0">{methodsText}</span>
+        {/* Rate + limits */}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline gap-1 leading-[1.5]">
+            {hasRate ? (
+              <>
+                <span className="font-display text-[18px] font-semibold text-gray-900">
+                  {rate.toLocaleString('en-US')} {currencyLabel}
+                </span>
+                <span className="font-body text-[13px] font-normal text-gray-400">
+                  /USDC
+                </span>
+              </>
+            ) : (
+              <span className="font-display text-[18px] font-semibold text-gray-300">
+                — {currencyLabel} /USDC
+              </span>
+            )}
+          </div>
+          <p className="font-body text-[12px] font-medium text-[#0f172a]">
+            {limitsText}
+          </p>
+        </div>
+
+        {/* Disabled preview button */}
         <button
           type="button"
           disabled
-          className="shrink-0 cursor-default rounded-full bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-2.5 text-sm font-display font-bold text-white opacity-70"
+          className="shrink-0 cursor-default rounded-[8px] bg-green-600 px-3 py-2 text-xs font-semibold text-white opacity-70"
         >
           Buy Now
         </button>
+      </div>
+
+      {/* ── Row 3: Payment method badges ────────────────────────────────── */}
+      <div className="mt-3 flex flex-wrap gap-1">
+        {visibleMethods.length > 0 ? (
+          <>
+            {visibleMethods.map((method, i) => (
+              <span
+                key={i}
+                className="rounded-[8px] border border-[#e2e8f0] px-2 py-0.5 font-body text-[10px] font-semibold uppercase tracking-[0.3px] text-gray-900"
+              >
+                {method}
+              </span>
+            ))}
+            {overflow > 0 && (
+              <span className="rounded-[8px] border border-[#e2e8f0] px-2 py-0.5 font-body text-[10px] font-semibold text-gray-900">
+                +{overflow}
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="font-body text-[10px] text-gray-300 italic">
+            No methods selected yet
+          </span>
+        )}
       </div>
     </div>
   );
