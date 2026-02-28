@@ -1,4 +1,6 @@
 import { StellarWallet } from '@crossmint/client-sdk-react-ui';
+import { createOrderInputToContractArgs } from '@/lib/order-mapper';
+import type { CreateOrderInput } from '@/types';
 
 const DEFAULT_P2P_CONTRACT_ID = 'CA6I2J5MTYR525JMGMPRXAFNDBNWPRNB6GFWIW2S5VR6JD6QILJ53Q2V';
 type CrossmintWalletLike = unknown;
@@ -85,6 +87,35 @@ export async function confirmFiatPaymentWithCrossmint(params: {
     args: {
       caller,
       order_id: normalizeOrderId(orderId),
+    },
+  });
+}
+
+export async function createOrderWithCrossmint(params: {
+  wallet: CrossmintWalletLike | null | undefined;
+  caller: string;
+  input: CreateOrderInput;
+}) {
+  const { wallet, caller, input } = params;
+
+  if (!wallet) {
+    throw new Error('Wallet is not connected');
+  }
+
+  const contractArgs = createOrderInputToContractArgs(input);
+  const stellarWallet = StellarWallet.from(wallet as never);
+
+  return stellarWallet.sendTransaction({
+    contractId: resolveContractId(),
+    method: 'create_order_cli',
+    args: {
+      caller,
+      fiat_currency_code: contractArgs.fiat_currency_code,
+      payment_method_code: contractArgs.payment_method_code,
+      from_crypto: contractArgs.from_crypto,
+      amount: contractArgs.amount.toString(),
+      exchange_rate: contractArgs.exchange_rate.toString(),
+      duration_secs: String(contractArgs.duration_secs),
     },
   });
 }

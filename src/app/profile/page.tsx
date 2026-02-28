@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Copy, Check, Wallet, CalendarDays, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
@@ -234,14 +235,23 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => handleComingSoon("Sign out")}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-      >
-        <LogOut className="size-4" />
-        Sign out
-      </button>
+      <div className="space-y-3">
+        <Link
+          href="/profile/liquidity-provider"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          Liquidity Provider
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => handleComingSoon("Sign out")}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          <LogOut className="size-4" />
+          Sign out
+        </button>
+      </div>
     </div>
   );
 }
