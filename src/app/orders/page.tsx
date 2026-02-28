@@ -1,725 +1,122 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Clock,
-  Copy,
-  Check,
-  Star,
-  Download,
-  Flag,
-  RefreshCw,
-  SlidersHorizontal,
-  LayoutDashboard,
-  X,
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { useTradeHistory, CompletedTrade } from '@/contexts/TradeHistoryContext';
+import { LayoutDashboard, Package, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
+
 import EmptyState from '@/components/EmptyState';
-import FadeIn from '@/components/FadeIn';
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from '@/components/ui/drawer';
+import type { Order } from '@/types';
 
-// ============================================
-// TYPES
-// ============================================
-
-type TradeStatus = 'active' | 'completed' | 'disputed';
-
-interface TradeTimelineStep {
-  label: string;
-  time: string;
-  done: boolean;
-}
-
-interface FreelancerTrade {
-  id: string;
-  status: TradeStatus;
-  usdcAmount: number;
-  arsAmount: number;
-  rate: number;
-  counterparty: {
-    username: string;
-    reputation: number;
-  };
-  createdAt: string;
-  completedAt?: string;
-  txnId: string;
-  paymentMethod: string;
-  timeline: TradeTimelineStep[];
-}
-
-// ============================================
-// MOCK DATA
-// ============================================
-
-const MOCK_TRADES: FreelancerTrade[] = [
-  {
-    id: 'TRD-001',
-    status: 'active',
-    usdcAmount: 0.15,
-    arsAmount: 222.75,
-    rate: 1485,
-    counterparty: { username: 'crypto_trader_ar', reputation: 4.8 },
-    createdAt: '2026-02-10T15:15:00',
-    txnId: '#TXN789012',
-    paymentMethod: 'MercadoPago',
-    timeline: [
-      { label: 'Trade started', time: '3:15 PM', done: true },
-      { label: 'Payment sent', time: '3:16 PM', done: true },
-      { label: 'Awaiting release', time: '', done: false },
-      { label: 'USDC received', time: '', done: false },
-    ],
-  },
-  {
-    id: 'TRD-002',
-    status: 'completed',
-    usdcAmount: 0.11,
-    arsAmount: 163.35,
-    rate: 1485,
-    counterparty: { username: 'p2p_master', reputation: 4.9 },
-    createdAt: '2026-02-09T11:30:00',
-    completedAt: '2026-02-09T11:33:00',
-    txnId: '#TXN456789',
-    paymentMethod: 'Bank Transfer',
-    timeline: [
-      { label: 'Trade started', time: '11:30 AM', done: true },
-      { label: 'Payment sent', time: '11:31 AM', done: true },
-      { label: 'USDC released', time: '11:32 AM', done: true },
-      { label: 'USDC received', time: '11:33 AM', done: true },
-    ],
-  },
-  {
-    id: 'TRD-003',
-    status: 'completed',
-    usdcAmount: 0.25,
-    arsAmount: 371.25,
-    rate: 1485,
-    counterparty: { username: 'usdc_dealer_ba', reputation: 4.7 },
-    createdAt: '2026-02-07T09:00:00',
-    completedAt: '2026-02-07T09:04:00',
-    txnId: '#TXN123456',
-    paymentMethod: 'MercadoPago',
-    timeline: [
-      { label: 'Trade started', time: '9:00 AM', done: true },
-      { label: 'Payment sent', time: '9:01 AM', done: true },
-      { label: 'USDC released', time: '9:03 AM', done: true },
-      { label: 'USDC received', time: '9:04 AM', done: true },
-    ],
-  },
-  {
-    id: 'TRD-004',
-    status: 'completed',
-    usdcAmount: 0.08,
-    arsAmount: 118.8,
-    rate: 1485,
-    counterparty: { username: 'crypto_trader_ar', reputation: 4.8 },
-    createdAt: '2026-02-05T16:45:00',
-    completedAt: '2026-02-05T16:48:00',
-    txnId: '#TXN987654',
-    paymentMethod: 'Bank Transfer',
-    timeline: [
-      { label: 'Trade started', time: '4:45 PM', done: true },
-      { label: 'Payment sent', time: '4:46 PM', done: true },
-      { label: 'USDC released', time: '4:47 PM', done: true },
-      { label: 'USDC received', time: '4:48 PM', done: true },
-    ],
-  },
-];
-
-// ============================================
-// HELPERS
-// ============================================
-
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
-
-function formatArs(value: number): string {
-  return value.toLocaleString('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function formatUsdc(value: number): string {
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function formatRate(value: number): string {
-  return value.toLocaleString('es-AR', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  });
-}
-
-// ============================================
-// STATUS BADGE
-// ============================================
-
-function StatusBadge({ status }: { status: TradeStatus }) {
-  const config = {
-    active: {
-      label: 'IN PROGRESS',
-      className: 'border-indigo-200 bg-indigo-100 text-indigo-700',
-      dot: 'bg-indigo-500',
-    },
-    completed: {
-      label: 'COMPLETED',
-      className: 'border-lime-200 bg-lime-100 text-lime-700',
-      dot: 'bg-lime-500',
-    },
-    disputed: {
-      label: 'DISPUTED',
-      className: 'border-red-200 bg-red-100 text-red-700',
-      dot: 'bg-red-500',
-    },
-  };
-  const { label, className, dot } = config[status];
-
-  return (
-    <Badge
-      variant="outline"
-      className={cn('gap-1.5 px-3 py-1 rounded-full text-xs font-medium', className)}
-    >
-      <span className={cn('size-1.5 rounded-full', dot)} />
-      {label}
-    </Badge>
-  );
-}
-
-// ============================================
-// TRADE CARD
-// ============================================
-
-function formatCardDate(dateString: string): string {
-  const date = new Date(dateString);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const h12 = hours % 12 || 12;
-  return `${day}-${month}-${year}, ${h12}:${minutes} ${ampm}`;
-}
-
-function TradeCard({
-  trade,
-  onTap,
-}: {
-  trade: FreelancerTrade;
-  onTap: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onTap}
-      className={cn(
-        'w-full bg-white rounded-md border border-gray-200 p-4 text-left',
-        'shadow-[0px_4px_4px_0px_rgba(174,174,174,0.25)]',
-        'transition-all duration-200 hover:border-gray-300 hover:shadow-md',
-        'focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-500)] focus:ring-offset-2',
-        'active:scale-[0.98]'
-      )}
-    >
-      {/* Top row: Amount info + status badge */}
-      <div className="flex flex-wrap items-center justify-between gap-y-3">
-        <div className="flex flex-col gap-1">
-          <p className="font-display font-semibold text-[15px] leading-[1.5] text-[#191919]">
-            Sold {formatUsdc(trade.usdcAmount)} USDC
-          </p>
-          <p className="text-xs text-[#0f172a]">
-            Received{' '}
-            <span className="font-bold">
-              ${formatArs(trade.arsAmount)} ARS
-            </span>
-          </p>
-        </div>
-        <StatusBadge status={trade.status} />
-      </div>
-
-      {/* Date */}
-      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.5px] text-[#404040]">
-        {formatCardDate(trade.createdAt)}
-      </p>
-    </button>
-  );
-}
-
-// ============================================
-// TRADE DETAIL SHEET
-// ============================================
-
-function TradeDetailSheet({
-  trade,
-  open,
-  onClose,
-}: {
-  trade: FreelancerTrade | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
-
-  useEffect(() => {
-    setCopied(false);
-    setRating(0);
-    setRatingSubmitted(false);
-  }, [trade?.id]);
-
-  if (!trade) return null;
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(trade.txnId);
-    } catch {
-      // clipboard unavailable
-    } finally {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const isWithin24h = trade.completedAt
-    ? Date.now() - new Date(trade.completedAt).getTime() < 24 * 60 * 60 * 1000
-    : true;
-
-  return (
-    <Drawer open={open} onOpenChange={(v) => !v && onClose()} direction="bottom">
-      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 rounded-t-2xl max-h-[90dvh] overflow-y-auto border-gray-200 bg-white p-0">
-        <div className="px-5 pt-4 pb-8 space-y-5">
-          <DrawerHeader className="space-y-1 px-0 pt-0">
-            <DrawerTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
-              Trade Details
-            </DrawerTitle>
-            <DrawerDescription className="sr-only">
-              Full transaction details
-            </DrawerDescription>
-          </DrawerHeader>
-
-          {/* Status */}
-          <div className="flex justify-center">
-            <StatusBadge status={trade.status} />
-          </div>
-
-          {/* Summary */}
-          <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">You sold</span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-gray-900 tabular-nums">
-                {formatUsdc(trade.usdcAmount)} USDC
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">You received</span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-emerald-600 tabular-nums">
-                ${formatArs(trade.arsAmount)} ARS
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Rate</span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-gray-700 tabular-nums">
-                1 USDC = {formatRate(trade.rate)} ARS
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Method</span>
-              <span className="text-body-sm font-medium text-gray-700">
-                {trade.paymentMethod}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-body-sm text-gray-500">Counterparty</span>
-              <span className="text-body-sm font-medium text-gray-700">
-                @{trade.counterparty.username}{' '}
-                <span className="text-fuchsia-500">
-                  ★ {trade.counterparty.reputation}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* Timeline */}
-          <div>
-            <p className="text-body-sm font-semibold text-gray-900 mb-3">
-              Timeline
-            </p>
-            <div className="space-y-0">
-              {trade.timeline.map((step, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={cn(
-                        'w-2.5 h-2.5 rounded-full mt-1.5 shrink-0',
-                        step.done ? 'bg-emerald-500' : 'bg-gray-300'
-                      )}
-                    />
-                    {i < trade.timeline.length - 1 && (
-                      <div
-                        className={cn(
-                          'w-0.5 h-6',
-                          step.done ? 'bg-emerald-200' : 'bg-gray-200'
-                        )}
-                      />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between flex-1 pb-3">
-                    <span
-                      className={cn(
-                        'text-sm',
-                        step.done
-                          ? 'text-gray-900 font-medium'
-                          : 'text-gray-400'
-                      )}
-                    >
-                      {step.label}
-                    </span>
-                    {step.time && (
-                      <span className="text-xs text-gray-400 font-[family-name:var(--font-jetbrains-mono)] tabular-nums">
-                        {step.time}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Transaction ID */}
-          <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
-            <div>
-              <p className="text-xs text-gray-400">Transaction ID</p>
-              <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-gray-700 tabular-nums">
-                {trade.txnId}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className={cn(
-                'flex items-center justify-center size-8 rounded-lg transition-all active:scale-95',
-                copied
-                  ? 'bg-emerald-100 text-emerald-600'
-                  : 'bg-white text-gray-400 hover:text-gray-600 border border-gray-200'
-              )}
-            >
-              {copied ? (
-                <Check className="size-4" />
-              ) : (
-                <Copy className="size-4" />
-              )}
-            </button>
-          </div>
-
-          {/* Rate trader (completed, not yet rated) */}
-          {trade.status === 'completed' && !ratingSubmitted && (
-            <div className="bg-gray-50 rounded-2xl p-4">
-              <p className="text-body-sm text-gray-500 text-center mb-3">
-                Rate{' '}
-                <strong className="text-gray-900">
-                  @{trade.counterparty.username}
-                </strong>
-              </p>
-              <div className="flex justify-center mb-3">
-                <div className="flex items-center gap-1.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      className="transition-transform active:scale-90 hover:scale-110 p-0.5"
-                    >
-                      <Star
-                        className={cn(
-                          'size-7 transition-colors',
-                          rating >= star
-                            ? 'fill-fuchsia-500 text-fuchsia-500'
-                            : 'fill-transparent text-gray-300'
-                        )}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {rating > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setRatingSubmitted(true)}
-                  className="w-full h-10 rounded-xl font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 transition-colors active:scale-[0.98]"
-                >
-                  Submit rating
-                </button>
-              )}
-            </div>
-          )}
-
-          {trade.status === 'completed' && ratingSubmitted && (
-            <div className="flex flex-col items-center text-center bg-gray-50 rounded-2xl py-4">
-              <div className="flex items-center justify-center size-9 rounded-full bg-emerald-100 mb-2">
-                <Check className="size-4 text-emerald-600" strokeWidth={2.5} />
-              </div>
-              <p className="text-body-sm font-semibold text-gray-900">
-                Thanks for your rating!
-              </p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="space-y-3">
-            {trade.status === 'completed' && (
-              <button
-                type="button"
-                className="w-full h-12 rounded-xl flex items-center justify-center gap-2 font-[family-name:var(--font-space-grotesk)] text-sm font-semibold text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 transition-all active:scale-[0.98]"
-              >
-                <Download className="size-4" />
-                Download receipt
-              </button>
-            )}
-            {isWithin24h && (
-              <button
-                type="button"
-                className="w-full h-10 rounded-xl flex items-center justify-center gap-2 font-[family-name:var(--font-space-grotesk)] text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
-              >
-                <Flag className="size-4" />
-                Report issue
-              </button>
-            )}
-          </div>
-        </div>
-      </DrawerContent>
-    </Drawer>
-  );
-}
-
-// ============================================
-// HELPERS: convert real trades to display format
-// ============================================
-
-function realTradeToFreelancer(trade: CompletedTrade): FreelancerTrade {
-  const date = new Date(trade.date);
-  const timeStr = date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-  return {
-    id: trade.id,
-    status: 'completed',
-    usdcAmount: trade.amount,
-    arsAmount: trade.arsReceived,
-    rate: trade.rate,
-    counterparty: { username: trade.marketMaker, reputation: 4.8 },
-    createdAt: trade.date,
-    completedAt: trade.date,
-    txnId: trade.txnId,
-    paymentMethod: trade.paymentMethod,
-    timeline: [
-      { label: 'Trade started', time: timeStr, done: true },
-      { label: 'Payment sent', time: timeStr, done: true },
-      { label: 'USDC released', time: timeStr, done: true },
-      { label: 'USDC received', time: timeStr, done: true },
-    ],
-  };
-}
-
-// ============================================
-// FREELANCER TRADES VIEW
-// ============================================
-
-// ============================================
-// FILTER TYPES & DEFAULTS
-// ============================================
-
-type TradeType = 'buy' | 'sell';
+type TabType = 'active' | 'completed' | 'disputed';
+type OrderType = 'buy' | 'sell';
 type DateRange = 'last7' | 'last30' | 'all';
 
-interface TradeFilters {
-  status: TradeStatus[];
-  type: TradeType[];
+interface OrderFilters {
+  type: OrderType[];
   dateRange: DateRange;
 }
 
-const DEFAULT_FILTERS: TradeFilters = {
-  status: [],
+const DEFAULT_FILTERS: OrderFilters = {
   type: [],
   dateRange: 'all',
 };
 
-function countActiveFilters(filters: TradeFilters): number {
-  let count = filters.status.length + filters.type.length;
-  if (filters.dateRange !== 'all') count++;
+function countActiveFilters(filters: OrderFilters): number {
+  let count = filters.type.length;
+  if (filters.dateRange !== 'all') count += 1;
   return count;
 }
 
-// ============================================
-// FILTER CHECKBOX
-// ============================================
+function getOrdersForTab(orders: Order[], tab: TabType): Order[] {
+  if (tab === 'active') {
+    return orders.filter(
+      (order) =>
+        order.status === 'Created' ||
+        order.status === 'AwaitingFiller' ||
+        order.status === 'AwaitingPayment' ||
+        order.status === 'AwaitingConfirmation',
+    );
+  }
 
-function FilterCheckbox({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-}) {
+  if (tab === 'completed') {
+    return orders.filter((order) => order.status === 'Completed');
+  }
+
+  return orders.filter(
+    (order) =>
+      order.status === 'Disputed' ||
+      order.status === 'Cancelled' ||
+      order.status === 'Refunded',
+  );
+}
+
+function FilterCheckbox({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
   return (
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-3 w-full py-2.5 text-left group"
+      className="group flex w-full items-center gap-3 py-2.5 text-left"
     >
       <div
         className={cn(
-          'flex items-center justify-center size-5 rounded-md border-2 transition-all',
+          'flex size-5 items-center justify-center rounded-md border-2 transition-all',
           checked
-            ? 'bg-magenta-500 border-magenta-500'
-            : 'border-gray-300 group-hover:border-gray-400'
+            ? 'border-primary-500 bg-primary-500'
+            : 'border-gray-300 group-hover:border-gray-400',
         )}
       >
-        {checked && <Check className="size-3 text-white" strokeWidth={3} />}
+        {checked && <span className="text-xs font-bold text-white">✓</span>}
       </div>
       <span className="text-sm text-gray-700">{label}</span>
     </button>
   );
 }
 
-// ============================================
-// FILTER BOTTOM SHEET
-// ============================================
-
 function FilterSheet({
   open,
   onClose,
   filters,
   onApply,
-  resultCount,
 }: {
   open: boolean;
   onClose: () => void;
-  filters: TradeFilters;
-  onApply: (filters: TradeFilters) => void;
-  resultCount: number;
+  filters: OrderFilters;
+  onApply: (filters: OrderFilters) => void;
 }) {
-  const [draft, setDraft] = useState<TradeFilters>(filters);
+  const [draft, setDraft] = useState<OrderFilters>(filters);
 
-  useEffect(() => {
-    if (open) setDraft(filters);
-  }, [open, filters]);
-
-  const toggleStatus = (s: TradeStatus) => {
+  const toggleType = (type: OrderType) => {
     setDraft((prev) => ({
       ...prev,
-      status: prev.status.includes(s)
-        ? prev.status.filter((v) => v !== s)
-        : [...prev.status, s],
+      type: prev.type.includes(type)
+        ? prev.type.filter((value) => value !== type)
+        : [...prev.type, type],
     }));
   };
-
-  const toggleType = (t: TradeType) => {
-    setDraft((prev) => ({
-      ...prev,
-      type: prev.type.includes(t)
-        ? prev.type.filter((v) => v !== t)
-        : [...prev.type, t],
-    }));
-  };
-
-  const setDateRange = (d: DateRange) => {
-    setDraft((prev) => ({
-      ...prev,
-      dateRange: prev.dateRange === d ? 'all' : d,
-    }));
-  };
-
-  const clearAll = () => setDraft({ ...DEFAULT_FILTERS });
-
-  const hasDraftFilters = countActiveFilters(draft) > 0;
 
   return (
-    <Drawer open={open} onOpenChange={(v) => !v && onClose()} direction="bottom">
-      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 rounded-t-2xl max-h-[85dvh] overflow-y-auto border-gray-200 bg-white p-0">
-        <div className="px-5 pt-4 pb-8 space-y-6">
-          {/* Header */}
+    <Drawer open={open} onOpenChange={(value) => !value && onClose()} direction="bottom">
+      <DrawerContent className="inset-x-0 mx-auto w-[calc(100%-2rem)] max-w-120 rounded-t-2xl border-gray-200 bg-white p-0">
+        <div className="space-y-6 px-5 pb-8 pt-4">
           <DrawerHeader className="space-y-0 px-0 pt-0">
             <div className="flex items-center justify-between">
-              <DrawerTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">
-                Filters
-              </DrawerTitle>
-              <div className="flex items-center gap-3">
-                {hasDraftFilters && (
-                  <button
-                    type="button"
-                    onClick={clearAll}
-                    className="text-sm text-magenta-500 font-medium hover:text-magenta-600 transition-colors"
-                  >
-                    Clear all
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex items-center justify-center size-8 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <X className="size-4 text-gray-500" />
-                </button>
-              </div>
+              <DrawerTitle className="font-[family-name:var(--font-space-grotesk)] text-lg">Filters</DrawerTitle>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex size-8 items-center justify-center rounded-full hover:bg-gray-100"
+              >
+                <X className="size-4 text-gray-500" />
+              </button>
             </div>
-            <DrawerDescription className="sr-only">
-              Filter your trades by status, type, and date range
-            </DrawerDescription>
+            <DrawerDescription className="sr-only">Filter your orders by side and date range</DrawerDescription>
           </DrawerHeader>
 
-          {/* Status */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              Status
-            </h3>
-            <div className="space-y-0.5">
-              <FilterCheckbox
-                checked={draft.status.includes('active')}
-                onChange={() => toggleStatus('active')}
-                label="Active"
-              />
-              <FilterCheckbox
-                checked={draft.status.includes('completed')}
-                onChange={() => toggleStatus('completed')}
-                label="Completed"
-              />
-              <FilterCheckbox
-                checked={draft.status.includes('disputed')}
-                onChange={() => toggleStatus('disputed')}
-                label="Disputed"
-              />
-            </div>
-          </div>
-
-          {/* Type */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              Type
-            </h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Side</h3>
             <div className="space-y-0.5">
               <FilterCheckbox
                 checked={draft.type.includes('buy')}
@@ -734,301 +131,253 @@ function FilterSheet({
             </div>
           </div>
 
-          {/* Date range */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              Date Range
-            </h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Date range</h3>
             <div className="space-y-0.5">
               <FilterCheckbox
                 checked={draft.dateRange === 'last7'}
-                onChange={() => setDateRange('last7')}
+                onChange={() => setDraft((prev) => ({ ...prev, dateRange: prev.dateRange === 'last7' ? 'all' : 'last7' }))}
                 label="Last 7 days"
               />
               <FilterCheckbox
                 checked={draft.dateRange === 'last30'}
-                onChange={() => setDateRange('last30')}
+                onChange={() => setDraft((prev) => ({ ...prev, dateRange: prev.dateRange === 'last30' ? 'all' : 'last30' }))}
                 label="Last 30 days"
-              />
-              <FilterCheckbox
-                checked={draft.dateRange === 'all'}
-                onChange={() => setDateRange('all')}
-                label="All time"
               />
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="space-y-3 pt-2">
-            <p className="text-center text-xs text-gray-400">
-              Showing {resultCount} {resultCount === 1 ? 'trade' : 'trades'}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                onApply(draft);
-                onClose();
-              }}
-              className="w-full h-12 rounded-xl bg-magenta-500 text-white font-[family-name:var(--font-space-grotesk)] font-semibold text-sm shadow-md shadow-magenta-500/20 hover:bg-magenta-600 transition-all active:scale-[0.98]"
-            >
-              Apply Filters
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onApply(draft);
+              onClose();
+            }}
+            className="h-12 w-full rounded-xl bg-primary-500 text-sm font-semibold text-white hover:bg-primary-600"
+          >
+            Apply filters
+          </button>
         </div>
       </DrawerContent>
     </Drawer>
   );
 }
 
-// ============================================
-// FREELANCER TRADES VIEW
-// ============================================
+function statusBadgeClass(status: Order['status']) {
+  if (status === 'Completed') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (status === 'Disputed' || status === 'Cancelled' || status === 'Refunded') {
+    return 'border-red-200 bg-red-50 text-red-700';
+  }
+  return 'border-primary-200 bg-primary-50 text-primary-700';
+}
 
-function FreelancerTradesView() {
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value);
+}
+
+export default function OrdersPage() {
   const router = useRouter();
-  const { trades: realTrades } = useTradeHistory();
-  const [filters, setFilters] = useState<TradeFilters>({ ...DEFAULT_FILTERS });
+
+  const orders = useStore((state) => state.orders);
+  const walletAddress = useStore((state) => state.user.walletAddress);
+  const refreshOrdersFromChain = useStore((state) => state.refreshOrdersFromChain);
+
+  const [activeTab, setActiveTab] = useState<TabType>('active');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [filters, setFilters] = useState<OrderFilters>(DEFAULT_FILTERS);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedTrade, setSelectedTrade] = useState<FreelancerTrade | null>(
-    null
+  const [nowTimestamp] = useState(() => Date.now());
+
+  const myOrders = useMemo(
+    () => orders.filter((order) => walletAddress !== null && order.createdBy === walletAddress),
+    [orders, walletAddress],
   );
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const allTrades = useMemo(() => {
-    const converted = realTrades.map(realTradeToFreelancer);
-    const realIds = new Set(converted.map((t) => t.id));
-    const mockOnly = MOCK_TRADES.filter((t) => !realIds.has(t.id));
-    return [...converted, ...mockOnly];
-  }, [realTrades]);
-
-  const filteredTrades = useMemo(() => {
-    return allTrades.filter((trade) => {
-      // Status filter
-      if (filters.status.length > 0 && !filters.status.includes(trade.status)) {
+  const filteredBySheet = useMemo(() => {
+    return myOrders.filter((order) => {
+      if (filters.type.length > 0 && !filters.type.includes(order.type)) {
         return false;
       }
 
-      // Type filter (all mock data is "sell" for now)
-      if (filters.type.length > 0) {
-        const tradeType: TradeType = 'sell'; // extend when buy trades exist
-        if (!filters.type.includes(tradeType)) return false;
-      }
-
-      // Date range filter
       if (filters.dateRange !== 'all') {
-        const now = Date.now();
-        const created = new Date(trade.createdAt).getTime();
+        const createdAt = toDate(order.createdAt).getTime();
         const days = filters.dateRange === 'last7' ? 7 : 30;
-        if (now - created > days * 24 * 60 * 60 * 1000) return false;
+        if (nowTimestamp - createdAt > days * 24 * 60 * 60 * 1000) {
+          return false;
+        }
       }
 
       return true;
     });
-  }, [filters, allTrades]);
+  }, [myOrders, filters, nowTimestamp]);
+
+  const activeOrders = useMemo(() => getOrdersForTab(filteredBySheet, 'active'), [filteredBySheet]);
+  const completedOrders = useMemo(() => getOrdersForTab(filteredBySheet, 'completed'), [filteredBySheet]);
+  const disputedOrders = useMemo(() => getOrdersForTab(filteredBySheet, 'disputed'), [filteredBySheet]);
+
+  const visibleOrders = useMemo(() => {
+    if (activeTab === 'active') return activeOrders;
+    if (activeTab === 'completed') return completedOrders;
+    return disputedOrders;
+  }, [activeTab, activeOrders, completedOrders, disputedOrders]);
 
   const activeFilterCount = countActiveFilters(filters);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
+    await refreshOrdersFromChain();
+    setIsRefreshing(false);
   };
 
   return (
     <>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-h3 text-black">My Trades</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-h3 text-black">My Orders</h1>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setFilterSheetOpen(true)}
             className={cn(
-              'flex items-center gap-2 px-3.5 py-2 rounded-xl border transition-all active:scale-[0.97]',
+              'flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm transition-all active:scale-[0.97]',
               activeFilterCount > 0
-                ? 'border-magenta-200 bg-magenta-50 text-magenta-600'
-                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                ? 'border-primary-200 bg-primary-50 text-primary-700'
+                : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
             )}
           >
             <SlidersHorizontal className="size-4" />
-            <span className="text-sm font-medium">Filters</span>
+            <span className="font-medium">Filters</span>
             {activeFilterCount > 0 && (
-              <span className="flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-magenta-500 text-white text-[10px] font-bold">
+              <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary-500 px-1 text-[10px] font-bold text-white">
                 {activeFilterCount}
               </span>
             )}
           </button>
+
           <button
             type="button"
             onClick={() => router.push('/orders/dashboard')}
-            className="flex items-center justify-center size-9 rounded-full bg-gray-100 hover:bg-gray-200 transition-all active:scale-95"
+            className="flex size-9 items-center justify-center rounded-full bg-gray-100 transition-all hover:bg-gray-200 active:scale-95"
             aria-label="Contract dashboard"
-            title="Contract dashboard"
           >
             <LayoutDashboard className="size-4 text-gray-500" />
           </button>
+
           <button
             type="button"
-            onClick={handleRefresh}
+            onClick={() => void handleRefresh()}
             className={cn(
-              'flex items-center justify-center size-9 rounded-full bg-gray-100 hover:bg-gray-200 transition-all active:scale-95',
-              isRefreshing && 'animate-spin'
+              'flex size-9 items-center justify-center rounded-full bg-gray-100 transition-all hover:bg-gray-200 active:scale-95',
+              isRefreshing && 'animate-spin',
             )}
-            aria-label="Refresh"
+            aria-label="Refresh orders"
           >
             <RefreshCw className="size-4 text-gray-500" />
           </button>
         </div>
       </div>
 
-      {/* Active filter chips */}
-      {activeFilterCount > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {filters.status.map((s) => (
-            <span
-              key={s}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-magenta-50 text-magenta-600 text-xs font-medium border border-magenta-200"
-            >
-              {s === 'active' ? 'Active' : s === 'completed' ? 'Completed' : 'Disputed'}
-              <button
-                type="button"
-                onClick={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    status: prev.status.filter((v) => v !== s),
-                  }))
-                }
-                className="hover:text-magenta-800"
-              >
-                <X className="size-3" />
-              </button>
-            </span>
-          ))}
-          {filters.type.map((t) => (
-            <span
-              key={t}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-magenta-50 text-magenta-600 text-xs font-medium border border-magenta-200"
-            >
-              {t === 'buy' ? 'Buy orders' : 'Sell orders'}
-              <button
-                type="button"
-                onClick={() =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    type: prev.type.filter((v) => v !== t),
-                  }))
-                }
-                className="hover:text-magenta-800"
-              >
-                <X className="size-3" />
-              </button>
-            </span>
-          ))}
-          {filters.dateRange !== 'all' && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-magenta-50 text-magenta-600 text-xs font-medium border border-magenta-200">
-              {filters.dateRange === 'last7' ? 'Last 7 days' : 'Last 30 days'}
-              <button
-                type="button"
-                onClick={() =>
-                  setFilters((prev) => ({ ...prev, dateRange: 'all' }))
-                }
-                className="hover:text-magenta-800"
-              >
-                <X className="size-3" />
-              </button>
-            </span>
+      <div className="mb-5 grid grid-cols-3 gap-2 rounded-xl border border-gray-200 bg-gray-50 p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab('active')}
+          className={cn(
+            'rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
+            activeTab === 'active'
+              ? 'bg-white text-primary-700 shadow-sm'
+              : 'text-gray-600 hover:bg-gray-100',
           )}
-        </div>
-      )}
+        >
+          Active ({activeOrders.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('completed')}
+          className={cn(
+            'rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
+            activeTab === 'completed'
+              ? 'bg-white text-primary-700 shadow-sm'
+              : 'text-gray-600 hover:bg-gray-100',
+          )}
+        >
+          Completed ({completedOrders.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('disputed')}
+          className={cn(
+            'rounded-lg px-3 py-2 text-sm font-semibold transition-colors',
+            activeTab === 'disputed'
+              ? 'bg-white text-primary-700 shadow-sm'
+              : 'text-gray-600 hover:bg-gray-100',
+          )}
+        >
+          Disputed ({disputedOrders.length})
+        </button>
+      </div>
 
-      {/* Trade list */}
-      {isLoading ? (
+      {visibleOrders.length > 0 ? (
         <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="bg-white rounded-xl border border-gray-200 p-4 animate-pulse"
-            >
-              <div className="flex justify-between mb-3">
-                <div className="h-3 w-32 bg-gray-200 rounded" />
-                <div className="h-5 w-20 bg-gray-200 rounded-full" />
-              </div>
-              <div className="h-4 w-40 bg-gray-200 rounded mb-2" />
-              <div className="h-4 w-48 bg-gray-200 rounded mb-3" />
-              <div className="border-t border-gray-100 pt-2 flex justify-between">
-                <div className="h-3 w-32 bg-gray-200 rounded" />
-                <div className="h-3 w-24 bg-gray-200 rounded" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : filteredTrades.length > 0 ? (
-        <div className="space-y-3">
-          {filteredTrades.map((trade, index) => (
-            <FadeIn key={trade.id} delay={index * 0.05}>
-              <TradeCard
-                trade={trade}
-                onTap={() => setSelectedTrade(trade)}
-              />
-            </FadeIn>
-          ))}
+          {visibleOrders.map((order) => {
+            const createdAt = toDate(order.createdAt);
+            return (
+              <button
+                key={order.id}
+                type="button"
+                onClick={() => router.push(`/orders/${order.id}`)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left transition-all hover:border-primary-200 hover:shadow-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                    {order.type.toUpperCase()}
+                  </span>
+                  <span className={cn('rounded-full border px-2.5 py-1 text-xs font-medium', statusBadgeClass(order.status))}>
+                    {order.status}
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <p className="text-xl font-display font-semibold text-dark-500">
+                    {order.remainingAmount.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{' '}
+                    USDC
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    1 USDC = {order.rate.toLocaleString('en-US')} {order.fiatCurrencyLabel}
+                  </p>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+                  <span>{order.paymentMethodLabel}</span>
+                  <span>
+                    Created{' '}
+                    {createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       ) : (
-        <FadeIn>
-          <EmptyState
-            icon={<Clock className="w-14 h-14 text-gray-300" />}
-            title={
-              activeFilterCount > 0
-                ? 'No trades match your filters'
-                : 'No trades yet'
-            }
-            description={
-              activeFilterCount > 0
-                ? 'Try adjusting your filters'
-                : undefined
-            }
-            actionText={
-              activeFilterCount > 0
-                ? 'Clear filters'
-                : 'Make my first trade'
-            }
-            onAction={
-              activeFilterCount > 0
-                ? () => setFilters({ ...DEFAULT_FILTERS })
-                : () => router.push('/trade')
-            }
-          />
-        </FadeIn>
+        <EmptyState
+          icon={<Package className="h-16 w-16 text-gray-300" />}
+          title={
+            activeTab === 'active'
+              ? 'No active orders yet.'
+              : activeTab === 'completed'
+                ? 'No completed orders yet.'
+                : 'No disputed orders.'
+          }
+        />
       )}
 
-      {/* Filter bottom sheet */}
       <FilterSheet
         open={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
         filters={filters}
         onApply={setFilters}
-        resultCount={filteredTrades.length}
-      />
-
-      {/* Trade detail sheet */}
-      <TradeDetailSheet
-        trade={selectedTrade}
-        open={selectedTrade !== null}
-        onClose={() => setSelectedTrade(null)}
       />
     </>
   );
-}
-
-// ============================================
-// MAIN PAGE
-// ============================================
-
-export default function OrdersPage() {
-  return <FreelancerTradesView />;
 }

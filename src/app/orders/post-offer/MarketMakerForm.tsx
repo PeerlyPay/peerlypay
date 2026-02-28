@@ -178,7 +178,7 @@ export default function MarketMakerForm() {
         ? `Offer posted on-chain. ${usdcEscrow.toFixed(2)} USDC is locked in escrow.`
         : "Offer posted on-chain. USDC escrow will be locked when a taker accepts.";
       toast.success(successMessage);
-      router.push("/orders/mine");
+      router.push("/orders");
     } catch (error) {
       console.error("Failed to post offer on-chain", error);
       const message = "Failed to post offer on-chain. Please try again.";
