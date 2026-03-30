@@ -1,4 +1,23 @@
-# PeerlyPay 🌍💸
+<div align="center">
+  <img src="public/images/banner.png" alt="PeerlyPay banner" width="100%" />
+  <br />
+  <br />
+  <img src="public/icon-fuchsia.svg" alt="PeerlyPay logo" width="120" />
+  <h1>PeerlyPay 🌍💸</h1>
+  <p><strong>Earn Global, Spend Local - Trustless ramp for the borderless economy.</strong></p>
+
+  <p>
+    <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js" />
+    <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React" />
+    <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+    <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+    <img src="https://img.shields.io/badge/Zustand-1F1F1F?style=flat-square&logoColor=white" alt="Zustand" />
+    <img src="https://img.shields.io/badge/Stellar-111111?style=flat-square&logo=stellar&logoColor=white" alt="Stellar" />
+    <img src="https://img.shields.io/badge/Soroban-0F172A?style=flat-square&logo=stellar&logoColor=white" alt="Soroban" />
+    <img src="https://img.shields.io/badge/Base-0052FF?style=flat-square&logo=coinbase&logoColor=white" alt="Base" />
+    <img src="https://img.shields.io/badge/Slice_Protocol-7C3AED?style=flat-square&logoColor=white" alt="Slice Protocol" />
+  </p>
+</div>
 
 ## Tagline
 
